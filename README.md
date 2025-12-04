@@ -22,7 +22,7 @@ Feita em **NestJS + Prisma 7 + PostgreSQL**.
 
 ---
 
-## 🛠 Tecnologias Utilizadas
+## Tecnologias Utilizadas
 
 - **NestJS**
 - **Node.js**
@@ -50,7 +50,7 @@ Crie um arquivo .env com:
 
 ```
 DATABASE_URL="postgresql://usuario:senha@localhost:5432/desbravaprovas?schema=public"
-JWT_SECRET="sua_chave_super_secreta"
+JWT_SECRET="chave_super_secreta"
 ```
 
 ### 3. Rodar migrations
@@ -65,23 +65,17 @@ npx prisma migrate dev
 npx prisma generate
 ```
 
-### 5. Rodar o seed inicial
-
-```
-npm run seed
-```
-
-### 6. Iniciar o servidor
+### 5. Iniciar o servidor
 
 ```
 npm run start:dev
 ```
 
-## 📁 Estrutura do projeto
+## Estrutura do projeto
 
 ```
-src/
 prisma/
+src/
 modules/
 auth/
 usuarios/
@@ -90,8 +84,6 @@ unidades/
 provas/
 questoes/
 prisma/
-schema.prisma
-seed.mjs
 ```
 
 ## 🤝 Contribuição
