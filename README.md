@@ -1,5 +1,5 @@
 # DesbravaProvas
-[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-blue.svg)](LICENSE)
+[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-blue.svg)](./LICENSE.txt)
 
 Plataforma completa para criação, aplicação e correção de provas de especialidades para Clubes de Desbravadores.  
 Feita em **NestJS + Prisma 7 + PostgreSQL**.
@@ -108,4 +108,4 @@ desde que:
 - **não seja para fins comerciais**, e
 - **seja atribuída a autoria original**.
 
-Veja o arquivo LICENSE(./LICENSE) para mais informações.
+Veja o arquivo LICENSE para mais informações.
