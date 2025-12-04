@@ -1,0 +1,166 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+/*
+  MODELOS PRINCIPAIS:
+
+  - Usuario: dados de login e papel global (papelGlobal).
+  - Clube: grupo (ex.: "Águias da Serra").
+  - Unidade: subdivisão dentro do clube (cada conselheiro/desbravador pertence a uma).
+  - MembroClube: vínculo Usuario <-> Clube + Unidade + papel dentro do clube.
+  - Especialidade: áreas de conhecimento de provas.
+  - Prova: criada dentro de um clube (e opcionalmente de uma unidade), com visibilidade.
+  - Questao: questões de múltipla escolha ou dissertativas.
+  - RespostaProva: respostas enviadas por um desbravador.
+*/
+
+model Usuario {
+  id             Int              @id @default(autoincrement())
+  nome           String
+  email          String           @unique
+  senhaHash      String
+  papelGlobal    PapelGlobal      @default(USUARIO) // papel global (MASTER, etc.)
+  fotoPerfilUrl  String?
+  criadoEm       DateTime         @default(now())
+  atualizadoEm   DateTime         @updatedAt
+
+  membrosClube   MembroClube[]
+  provasCriadas  Prova[]          @relation("ProvasCriadas")
+  respostas      RespostaProva[]
+}
+
+enum PapelGlobal {
+  USUARIO   // padrão
+  MASTER    // admin global da plataforma
+}
+
+model Clube {
+  id        Int            @id @default(autoincrement())
+  nome      String
+  slug      String         @unique   // "aguias-da-serra"
+  criadoEm  DateTime       @default(now())
+
+  membros   MembroClube[]
+  unidades  Unidade[]
+  provas    Prova[]
+}
+
+model Unidade {
+  id        Int          @id @default(autoincrement())
+  clubeId   Int
+  nome      String
+  criadoEm  DateTime     @default(now())
+
+  clube     Clube        @relation(fields: [clubeId], references: [id])
+  membros   MembroClube[]
+  provas    Prova[]
+}
+
+model MembroClube {
+  id          Int           @id @default(autoincrement())
+  usuarioId   Int
+  clubeId     Int
+  unidadeId   Int?
+  papel       PapelClube
+  status      StatusMembro   @default(PENDENTE)
+  criadoEm    DateTime       @default(now())
+
+  usuario     Usuario        @relation(fields: [usuarioId], references: [id])
+  clube       Clube          @relation(fields: [clubeId], references: [id])
+  unidade     Unidade?       @relation(fields: [unidadeId], references: [id])
+
+  @@unique([usuarioId, clubeId]) // um vínculo único por usuário por clube
+}
+
+enum PapelClube {
+  ADMIN_CLUBE
+  DIRETORIA     // acesso total às provas do clube, sem unidade fixa
+  CONSELHEIRO
+  DESBRAVADOR
+}
+
+enum StatusMembro {
+  PENDENTE
+  ATIVO
+  BLOQUEADO
+}
+
+model Especialidade {
+  id          Int        @id @default(autoincrement())
+  nome        String
+  descricao   String?
+
+  provas      Prova[]
+}
+
+model Prova {
+  id                Int                @id @default(autoincrement())
+  titulo            String
+  clubeId           Int
+  unidadeId         Int?
+  especialidadeId   Int?
+  criadaPorId       Int
+  valorTotal        Int                @default(100)
+  visibilidade      VisibilidadeProva  @default(CLUBE)
+
+  criadoEm          DateTime           @default(now())
+  atualizadoEm      DateTime           @updatedAt
+
+  clube             Clube              @relation(fields: [clubeId], references: [id])
+  unidade           Unidade?           @relation(fields: [unidadeId], references: [id])
+  especialidade     Especialidade?     @relation(fields: [especialidadeId], references: [id])
+  criadaPor         Usuario            @relation("ProvasCriadas", fields: [criadaPorId], references: [id])
+
+  questoes          Questao[]
+  respostas         RespostaProva[]
+
+  provaOriginalId   Int?
+  provaOriginal     Prova?             @relation("ProvaOriginal", fields: [provaOriginalId], references: [id])
+  clones            Prova[]            @relation("ProvaOriginal")
+}
+
+enum VisibilidadeProva {
+  PRIVADA    // só criador + diretoria do clube
+  UNIDADE    // conselheiros/desbravadores da mesma unidade + diretoria do clube
+  CLUBE      // todos os membros do clube
+  PUBLICA    // qualquer clube pode visualizar e clonar (banco de provas)
+}
+
+model Questao {
+  id               Int           @id @default(autoincrement())
+  provaId          Int
+  tipo             TipoQuestao
+  enunciado        String
+  alternativas     Json?         // ex: { "A": "...", "B": "...", ... }
+  respostaCorreta  String?
+  valor            Int           @default(10)
+  geradaPorIA      Boolean       @default(false)
+
+  prova            Prova         @relation(fields: [provaId], references: [id])
+}
+
+enum TipoQuestao {
+  MULTIPLA_ESCOLHA
+  DISSERTATIVA
+}
+
+model RespostaProva {
+  id                      Int       @id @default(autoincrement())
+  provaId                 Int
+  usuarioId               Int
+  respostas               Json       // ex: { "1": "A", "2": "C", ... }
+  notaObjetiva            Float?
+  notaDissertativa        Float?
+  notaFinal               Float?
+  corrigidaAutomaticamente Boolean   @default(false)
+  precisaCorrecaoManual   Boolean    @default(false)
+  criadoEm                DateTime   @default(now())
+
+  prova                   Prova      @relation(fields: [provaId], references: [id])
+  usuario                 Usuario    @relation(fields: [usuarioId], references: [id])
+}
