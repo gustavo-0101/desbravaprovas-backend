@@ -2,7 +2,12 @@
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-blue.svg)](./LICENSE.txt)
 
 Plataforma completa para criação, aplicação e correção de provas de especialidades para Clubes de Desbravadores.  
-Feita em **NestJS + Prisma 7 + PostgreSQL**.
+Desenvolvida com **NestJS + Prisma 7 + PostgreSQL**.
+![NestJS](https://img.shields.io/badge/NestJS-11.x-E0234E?logo=nestjs)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript)
+![Prisma](https://img.shields.io/badge/Prisma-7.1-2D3748?logo=prisma)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-4169E1?logo=postgresql)
+![Node.js](https://img.shields.io/badge/Node.js-22+-339933?logo=node.js)
 
 ---
 

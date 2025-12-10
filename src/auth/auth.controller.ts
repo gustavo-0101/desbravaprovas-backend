@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Get,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -13,11 +14,13 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import type { Request } from 'express';
 import { AuthService, AuthResponse } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegistroDto } from './dto/registro.dto';
 import { Public } from './decorators/public.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { CurrentUserType } from './decorators/current-user.decorator';
 
@@ -155,5 +158,60 @@ export class AuthController {
   })
   async verPerfil(@CurrentUser() user: CurrentUserType): Promise<CurrentUserType> {
     return user;
+  }
+
+  /**
+   * Iniciar login com Google
+   *
+   * Redireciona usuário para tela de autenticação do Google.
+   */
+  @Public()
+  @Get('google')
+  @UseGuards(GoogleAuthGuard)
+  @ApiOperation({
+    summary: 'Login com Google OAuth2',
+    description: 'Redireciona para autenticação do Google',
+  })
+  @ApiResponse({
+    status: 302,
+    description: 'Redireciona para tela de login do Google',
+  })
+  async googleLogin() {
+    // Guard redireciona automaticamente para Google
+  }
+
+  /**
+   * Callback do Google OAuth2
+   *
+   * Recebe dados do usuário após autenticação com Google.
+   * Cria usuário se não existir (findOrCreate pattern).
+   * Retorna token JWT.
+   */
+  @Public()
+  @Get('google/callback')
+  @UseGuards(GoogleAuthGuard)
+  @ApiOperation({
+    summary: 'Callback do Google OAuth2',
+    description:
+      'Processa autenticação do Google e retorna token JWT. Cria usuário automaticamente se não existir.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Login com Google bem-sucedido',
+    schema: {
+      example: {
+        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        usuario: {
+          id: 3,
+          nome: 'Pedro Costa',
+          email: 'pedro@gmail.com',
+          papelGlobal: 'USUARIO',
+          fotoPerfilUrl: 'https://lh3.googleusercontent.com/...',
+        },
+      },
+    },
+  })
+  async googleCallback(@Req() req: Request): Promise<AuthResponse> {
+    return this.authService.loginComGoogle(req.user);
   }
 }

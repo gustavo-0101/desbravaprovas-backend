@@ -20,18 +20,26 @@ generator client {
 */
 
 model Usuario {
-  id             Int              @id @default(autoincrement())
-  nome           String
-  email          String           @unique
-  senhaHash      String
-  papelGlobal    PapelGlobal      @default(USUARIO) // papel global (MASTER, etc.)
-  fotoPerfilUrl  String?
-  criadoEm       DateTime         @default(now())
-  atualizadoEm   DateTime         @updatedAt
+  id                Int              @id @default(autoincrement())
+  nome              String
+  email             String           @unique
+  senhaHash         String?          // opcional para login com Google
+  papelGlobal       PapelGlobal      @default(USUARIO) // papel global (MASTER, etc.)
+  fotoPerfilUrl     String?
 
-  membrosClube   MembroClube[]
-  provasCriadas  Prova[]          @relation("ProvasCriadas")
-  respostas      RespostaProva[]
+  // Verificação de email
+  emailVerificado   Boolean          @default(false)
+  tokenVerificacao  String?          @unique
+
+  // OAuth Google
+  googleId          String?          @unique
+
+  criadoEm          DateTime         @default(now())
+  atualizadoEm      DateTime         @updatedAt
+
+  membrosClube      MembroClube[]
+  provasCriadas     Prova[]          @relation("ProvasCriadas")
+  respostas         RespostaProva[]
 }
 
 enum PapelGlobal {

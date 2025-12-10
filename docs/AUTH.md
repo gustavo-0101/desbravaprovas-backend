@@ -7,8 +7,9 @@ Sistema de autenticação JWT (JSON Web Tokens) com bcrypt para hashing de senha
 ## Tecnologias
 
 - **JWT**: Tokens stateless para autenticação
-- **Passport**: Middleware de autenticação
+- **Passport**: Middleware de autenticação (JWT + Google OAuth2)
 - **Bcrypt**: Hashing de senhas (10 salt rounds)
+- **Google OAuth2**: Login social com Google
 - **class-validator**: Validação de DTOs
 
 ## Configuração
@@ -117,6 +118,244 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 **Erros:**
 - `401 Unauthorized`: Token inválido, expirado ou ausente
 
+---
+
+## Google OAuth2
+
+Sistema de autenticação com Google (Login Social).
+
+### Configuração
+
+#### 1. Obter Credenciais no Google Cloud Console
+
+1. Acesse [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Crie um novo projeto ou selecione existente
+3. Vá em "Credenciais" → "Criar credenciais" → "ID do cliente OAuth 2.0"
+4. Configure tela de consentimento se necessário
+5. Tipo de aplicativo: "Aplicativo da Web"
+6. Adicione URI de redirecionamento autorizado:
+   ```
+   http://localhost:3000/auth/google/callback
+   ```
+7. Copie "ID do cliente" e "Chave secreta do cliente"
+
+#### 2. Configurar Variáveis de Ambiente
+
+Adicione ao `.env`:
+
+```env
+GOOGLE_CLIENT_ID="seu-client-id.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="seu-client-secret"
+GOOGLE_CALLBACK_URL="http://localhost:3000/auth/google/callback"
+```
+
+### Endpoints
+
+#### GET /auth/google
+
+Inicia o fluxo de autenticação com Google.
+
+**Ação:**
+- Redireciona usuário para tela de login do Google
+- Solicita permissões: email, profile
+
+**Uso no navegador:**
+```
+http://localhost:3000/auth/google
+```
+
+**Fluxo:**
+1. Usuário acessa `/auth/google`
+2. É redirecionado para tela de login do Google
+3. Faz login com conta Google
+4. Autoriza acesso ao email e perfil
+5. É redirecionado para `/auth/google/callback`
+
+---
+
+#### GET /auth/google/callback
+
+Recebe resposta do Google e retorna JWT.
+
+**Query Parameters (automático):**
+- `code`: código de autorização do Google
+- `state`: token CSRF (opcional)
+
+**Response (200):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "usuario": {
+    "id": 5,
+    "nome": "Maria Santos",
+    "email": "maria@gmail.com",
+    "papelGlobal": "USUARIO",
+    "fotoPerfilUrl": "https://lh3.googleusercontent.com/a/..."
+  }
+}
+```
+
+**Comportamentos:**
+
+1. **Novo usuário Google:**
+   - Cria conta automaticamente
+   - Email marcado como verificado
+   - Foto do Google salva
+   - Retorna JWT
+
+2. **Usuário existente (por email):**
+   - Vincula `googleId` à conta existente
+   - Atualiza foto se não tiver
+   - Marca email como verificado
+   - Retorna JWT
+
+3. **Usuário Google existente:**
+   - Login direto
+   - Retorna JWT
+
+**Erros:**
+- `401 Unauthorized`: Falha na autenticação Google
+- `500 Internal Server Error`: Erro ao processar dados do Google
+
+### FindOrCreate Pattern
+
+O sistema implementa o padrão **findOrCreate** para Google OAuth:
+
+```typescript
+// Pseudo-código
+async loginComGoogle(googleUser) {
+  // 1. Busca por googleId
+  let usuario = buscarPorGoogleId(googleUser.googleId);
+
+  // 2. Se não encontrou, busca por email
+  if (!usuario) {
+    usuario = buscarPorEmail(googleUser.email);
+
+    // 3. Se encontrou por email, vincula Google
+    if (usuario) {
+      usuario.googleId = googleUser.googleId;
+      usuario.emailVerificado = true;
+    }
+  }
+
+  // 4. Se ainda não encontrou, cria novo
+  if (!usuario) {
+    usuario = criar({
+      googleId: googleUser.googleId,
+      email: googleUser.email,
+      nome: googleUser.nome,
+      fotoPerfilUrl: googleUser.foto,
+      emailVerificado: true,
+      senhaHash: null  // Sem senha
+    });
+  }
+
+  // 5. Retorna JWT
+  return gerarToken(usuario);
+}
+```
+
+### Características
+
+✅ **Sem senha** - Usuários Google não têm senha (campo `senhaHash` = null)
+✅ **Email verificado** - Automaticamente marcado como verificado
+✅ **Foto de perfil** - Importada do Google automaticamente
+✅ **Vinculação automática** - Se email já existe, vincula conta Google
+✅ **Criação automática** - Se novo usuário, cria sem intervenção
+
+### Segurança
+
+- **OAuth 2.0** - Protocolo padrão de autenticação
+- **HTTPS obrigatório** em produção
+- **Escopo mínimo** - Apenas email e profile
+- **Sem armazenamento de tokens Google** - Apenas dados do perfil
+- **Validação de email** pelo Google
+
+### Uso no Frontend
+
+#### React/Vue/Angular
+
+```javascript
+// Botão de login
+<a href="http://localhost:3000/auth/google">
+  <button>Login com Google</button>
+</a>
+
+// Processar callback
+useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('access_token');
+
+  if (token) {
+    localStorage.setItem('token', token);
+    // Redirecionar para dashboard
+  }
+}, []);
+```
+
+#### Mobile (React Native)
+
+```javascript
+import { WebBrowser } from 'expo-web-browser';
+
+async function loginComGoogle() {
+  const result = await WebBrowser.openAuthSessionAsync(
+    'http://localhost:3000/auth/google',
+    'myapp://callback'
+  );
+
+  if (result.type === 'success') {
+    const token = extractToken(result.url);
+    await AsyncStorage.setItem('token', token);
+  }
+}
+```
+
+### Limitações de Usuários Google
+
+Usuários que fazem login com Google:
+
+❌ **Não podem** alterar senha (não têm senha)
+❌ **Não podem** fazer login com email/senha
+✅ **Podem** atualizar nome e dados do perfil
+✅ **Podem** deletar conta normalmente
+
+**Tentativa de alterar senha:**
+```json
+PATCH /usuarios/5/senha
+{
+  "senhaAtual": "qualquer",
+  "novaSenha": "nova123"
+}
+
+Response: 401 Unauthorized
+{
+  "message": "Usuários que fazem login com Google não possuem senha"
+}
+```
+
+### Troubleshooting
+
+#### "Redirect URI mismatch"
+
+- Verifique se o URI no Google Console é exatamente:
+  ```
+  http://localhost:3000/auth/google/callback
+  ```
+- Em produção, adicione o domínio real
+
+#### "Access blocked: This app's request is invalid"
+
+- Tela de consentimento não configurada
+- Configure em "APIs e Serviços" → "Tela de consentimento OAuth"
+
+#### "Error: The OAuth client was not found"
+
+- `GOOGLE_CLIENT_ID` ou `GOOGLE_CLIENT_SECRET` incorretos
+- Verifique credenciais no `.env`
+
+---
+
 ## Arquitetura
 
 ### Fluxo de Autenticação
@@ -182,13 +421,20 @@ verPerfil(@CurrentUser() user: CurrentUserType) { ... }
 criar(@CurrentUser('id') userId: number) { ... }
 ```
 
-#### Strategy
+#### Strategies
 
 **JwtStrategy**
 - Extende PassportStrategy
 - Valida token JWT
 - Busca usuário no banco
 - Popula `request.user`
+
+**GoogleStrategy**
+- Extende PassportStrategy (Strategy 'google')
+- Redireciona para login do Google
+- Recebe dados do perfil Google
+- Implementa findOrCreate pattern
+- Popula `request.user` com dados do Google
 
 **Payload JWT:**
 ```typescript

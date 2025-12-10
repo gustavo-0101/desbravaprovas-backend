@@ -77,6 +77,12 @@ export class AuthService {
       throw new UnauthorizedException('Email ou senha inválidos');
     }
 
+    // Usuários com login Google não têm senha
+    if (!usuario.senhaHash) {
+      this.logger.warn(`Tentativa de login com senha em conta Google: ${email}`);
+      throw new UnauthorizedException('Esta conta usa login com Google');
+    }
+
     // Validar senha
     const senhaValida = await this.comparePassword(senha, usuario.senhaHash);
 
@@ -201,6 +207,78 @@ export class AuthService {
     };
 
     return this.jwtService.sign(payload);
+  }
+
+  /**
+   * Login com Google OAuth2
+   *
+   * Implementa padrão findOrCreate:
+   * - Se usuário já existe (por googleId ou email), faz login
+   * - Se não existe, cria novo usuário com dados do Google
+   *
+   * @param {any} googleUser - Dados do usuário retornados pela GoogleStrategy
+   * @returns {Promise<AuthResponse>} Token JWT e dados do usuário
+   */
+  async loginComGoogle(googleUser: any): Promise<AuthResponse> {
+    const { googleId, email, nome, fotoPerfilUrl, emailVerificado } = googleUser;
+
+    // Tentar encontrar usuário por googleId
+    let usuario = await this.prisma.usuario.findUnique({
+      where: { googleId },
+    });
+
+    // Se não encontrou por googleId, tentar por email
+    if (!usuario) {
+      usuario = await this.prisma.usuario.findUnique({
+        where: { email },
+      });
+
+      // Se encontrou por email, vincular googleId
+      if (usuario) {
+        usuario = await this.prisma.usuario.update({
+          where: { id: usuario.id },
+          data: {
+            googleId,
+            emailVerificado: emailVerificado || usuario.emailVerificado,
+            fotoPerfilUrl: fotoPerfilUrl || usuario.fotoPerfilUrl,
+          },
+        });
+
+        this.logger.log(`Conta existente vinculada ao Google: ${email}`);
+      }
+    }
+
+    // Se ainda não encontrou, criar novo usuário
+    if (!usuario) {
+      usuario = await this.prisma.usuario.create({
+        data: {
+          googleId,
+          email,
+          nome,
+          fotoPerfilUrl,
+          emailVerificado,
+          senhaHash: null, // Login com Google não tem senha
+        },
+      });
+
+      this.logger.log(`Nova conta criada via Google: ${email}`);
+    } else {
+      this.logger.log(`Login via Google: ${email}`);
+    }
+
+    // Gerar token JWT
+    const token = this.generateToken(usuario.id, usuario.email, usuario.papelGlobal);
+
+    return {
+      access_token: token,
+      usuario: {
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        papelGlobal: usuario.papelGlobal,
+        fotoPerfilUrl: usuario.fotoPerfilUrl,
+      },
+    };
   }
 
   /**
