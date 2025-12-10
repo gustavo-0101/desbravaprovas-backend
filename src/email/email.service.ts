@@ -281,4 +281,293 @@ export class EmailService {
       throw error;
     }
   }
+
+  async enviarEmailNovaSolicitacaoMembro(
+    destinatario: string,
+    nomeAdmin: string,
+    nomeSolicitante: string,
+    emailSolicitante: string,
+    nomeClube: string,
+    papelDesejado: string,
+    nomeUnidade?: string,
+  ): Promise<void> {
+    const urlPainel = `${this.configService.get<string>('APP_URL')}/admin/solicitacoes`;
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nova Solicitação de Membro - Desbrava Provas</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="background-color: #7c3aed; padding: 40px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px;">📋 Nova Solicitação</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 24px;">Olá, ${nomeAdmin}!</h2>
+              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Você recebeu uma nova solicitação de membro para o clube <strong>${nomeClube}</strong>.
+              </p>
+              <div style="background-color: #f3f4f6; border-left: 4px solid #7c3aed; padding: 20px; margin: 20px 0;">
+                <p style="margin: 0 0 10px 0; color: #1f2937; font-size: 16px;">
+                  <strong>Solicitante:</strong> ${nomeSolicitante}
+                </p>
+                <p style="margin: 0 0 10px 0; color: #4b5563; font-size: 14px;">
+                  <strong>Email:</strong> ${emailSolicitante}
+                </p>
+                <p style="margin: 0 0 10px 0; color: #4b5563; font-size: 14px;">
+                  <strong>Papel desejado:</strong> ${papelDesejado}
+                </p>
+                ${nomeUnidade ? `<p style="margin: 0; color: #4b5563; font-size: 14px;">
+                  <strong>Unidade:</strong> ${nomeUnidade}
+                </p>` : ''}
+              </div>
+              <p style="margin: 20px 0 30px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Acesse o painel de administração para aprovar ou rejeitar esta solicitação.
+              </p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <a href="${urlPainel}" style="display: inline-block; padding: 16px 32px; background-color: #7c3aed; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold;">
+                      Gerenciar Solicitações
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 30px 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+                Caso o botão não funcione, copie e cole o seguinte link no seu navegador:
+              </p>
+              <p style="margin: 10px 0 0 0; color: #7c3aed; font-size: 12px; word-break: break-all;">
+                ${urlPainel}
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                © ${new Date().getFullYear()} Desbrava Provas. Todos os direitos reservados.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+
+    try {
+      await this.transporter.sendMail({
+        from: `"Desbrava Provas" <${this.configService.get<string>('MAIL_FROM')}>`,
+        to: destinatario,
+        subject: `Nova solicitação de membro - ${nomeClube}`,
+        html,
+        encoding: 'utf-8',
+        textEncoding: 'base64',
+        headers: {
+          'Content-Type': 'text/html; charset=UTF-8',
+        },
+      });
+
+      this.logger.log(
+        `Email de nova solicitação enviado para ${destinatario} (clube: ${nomeClube})`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Erro ao enviar email para ${destinatario}: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  async enviarEmailSolicitacaoAprovada(
+    destinatario: string,
+    nomeMembro: string,
+    nomeClube: string,
+    papelAprovado: string,
+    nomeUnidade?: string,
+  ): Promise<void> {
+    const urlPlataforma = this.configService.get<string>('APP_URL');
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solicitação Aprovada - Desbrava Provas</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="background-color: #10b981; padding: 40px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px;">✅ Solicitação Aprovada!</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 24px;">Olá, ${nomeMembro}!</h2>
+              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Ótimas notícias! Sua solicitação para participar do clube <strong>${nomeClube}</strong> foi aprovada! 🎉
+              </p>
+              <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0;">
+                <p style="margin: 0 0 10px 0; color: #1f2937; font-size: 16px;">
+                  <strong>Clube:</strong> ${nomeClube}
+                </p>
+                <p style="margin: 0 0 10px 0; color: #4b5563; font-size: 14px;">
+                  <strong>Papel:</strong> ${papelAprovado}
+                </p>
+                ${nomeUnidade ? `<p style="margin: 0; color: #4b5563; font-size: 14px;">
+                  <strong>Unidade:</strong> ${nomeUnidade}
+                </p>` : ''}
+              </div>
+              <p style="margin: 20px 0 30px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Agora você já pode acessar a plataforma e começar suas atividades no clube!
+              </p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <a href="${urlPlataforma}" style="display: inline-block; padding: 16px 32px; background-color: #10b981; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold;">
+                      Acessar Plataforma
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                © ${new Date().getFullYear()} Desbrava Provas. Todos os direitos reservados.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+
+    try {
+      await this.transporter.sendMail({
+        from: `"Desbrava Provas" <${this.configService.get<string>('MAIL_FROM')}>`,
+        to: destinatario,
+        subject: `Bem-vindo ao ${nomeClube}! - Desbrava Provas`,
+        html,
+        encoding: 'utf-8',
+        textEncoding: 'base64',
+        headers: {
+          'Content-Type': 'text/html; charset=UTF-8',
+        },
+      });
+
+      this.logger.log(
+        `Email de aprovação enviado para ${destinatario} (clube: ${nomeClube})`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Erro ao enviar email para ${destinatario}: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  async enviarEmailSolicitacaoRejeitada(
+    destinatario: string,
+    nomeMembro: string,
+    nomeClube: string,
+  ): Promise<void> {
+    const urlPlataforma = this.configService.get<string>('APP_URL');
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solicitação Não Aprovada - Desbrava Provas</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="background-color: #f59e0b; padding: 40px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px;">Atualização sobre sua Solicitação</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 24px;">Olá, ${nomeMembro}!</h2>
+              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Informamos que sua solicitação para participar do clube <strong>${nomeClube}</strong> não foi aprovada neste momento.
+              </p>
+              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Não desanime! Você pode entrar em contato com os administradores do clube para entender melhor os requisitos ou tentar novamente mais tarde.
+              </p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <a href="${urlPlataforma}" style="display: inline-block; padding: 16px 32px; background-color: #f59e0b; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold;">
+                      Voltar à Plataforma
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                © ${new Date().getFullYear()} Desbrava Provas. Todos os direitos reservados.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+
+    try {
+      await this.transporter.sendMail({
+        from: `"Desbrava Provas" <${this.configService.get<string>('MAIL_FROM')}>`,
+        to: destinatario,
+        subject: `Atualização sobre sua solicitação - ${nomeClube}`,
+        html,
+        encoding: 'utf-8',
+        textEncoding: 'base64',
+        headers: {
+          'Content-Type': 'text/html; charset=UTF-8',
+        },
+      });
+
+      this.logger.log(
+        `Email de rejeição enviado para ${destinatario} (clube: ${nomeClube})`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Erro ao enviar email para ${destinatario}: ${error.message}`,
+      );
+      throw error;
+    }
+  }
 }

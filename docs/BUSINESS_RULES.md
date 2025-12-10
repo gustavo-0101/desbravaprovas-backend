@@ -21,20 +21,27 @@
 
 #### ADMIN_CLUBE
 - Admin do clube específico
-- Aprova novos membros (conselheiros, diretoria, desbravadores)
+- **Criação de Clube**: Pode criar UM clube apenas (necessita aprovação do MASTER)
+- Aprova novos membros (conselheiros, diretoria, desbravadores, instrutores)
+- Recebe notificações por email de novas solicitações de membros
 - Pode criar unidades
 - Acesso total às provas do clube
 - Pode editar provas de qualquer membro do clube
+- **Requisito**: Usuário deve ser aprovado como ADMIN_CLUBE pelo MASTER antes de criar o clube
 
 #### DIRETORIA
-- **NÃO tem unidade fixa** (unidadeId = null)
-- **Visualização**: Acessa TODAS as provas do clube, independente da visibilidade:
-  - Provas PRIVADAS de outros conselheiros
-  - Provas de UNIDADE de qualquer unidade
-  - Provas de CLUBE
-- **Edição**: Pode editar qualquer prova do clube (acesso total como co-autor)
-- **Criação**: Pode criar provas próprias
-- Função: supervisionar e auxiliar na criação de conteúdo do clube
+- **Cargos Específicos**: Diretor, Diretor Associado, Secretário, Tesoureiro, Capelão
+- **Unidade Fixa**:
+  - **Diretor e Secretário**: NÃO têm unidade fixa (unidadeId = null)
+  - **Demais cargos** (Diretor Associado, Tesoureiro, Capelão): TÊM unidade fixa e atuam também como conselheiros
+- **Visualização de Provas**:
+  - **Diretor e Secretário**: Acesso total a TODAS as provas do clube (PRIVADAS, UNIDADE, CLUBE, PUBLICA)
+  - **Demais cargos**: Mesmas permissões de CONSELHEIRO (apenas provas da sua unidade)
+- **Edição**:
+  - **Diretor e Secretário**: Podem editar qualquer prova do clube (acesso total como co-autor)
+  - **Demais cargos**: Apenas suas próprias provas
+- **Criação**: Todos podem criar provas próprias
+- **Requisito**: Deve ser batizado
 
 #### CONSELHEIRO
 - **Tem unidade fixa obrigatória** (unidadeId != null)
@@ -47,6 +54,18 @@
 - **Criação**: Cria provas para sua unidade ou clube
 - Pode gerar questões automaticamente por IA
 - Pode solicitar aprovação para se tornar DIRETORIA
+- **Requisito de Idade**: Mínimo 16 anos
+- **Nomenclatura Especial**: Se menor de 18 anos = CONSELHEIRO_ASSOCIADO (apenas nomenclatura, sem diferença de permissões)
+- **Requisito**: Deve ser batizado
+
+#### INSTRUTOR
+- **Tem unidade fixa obrigatória** (unidadeId != null)
+- **Atribuição Automática**: Membros NÃO batizados com 18+ anos tornam-se INSTRUTOR automaticamente
+- **Permissões**: Similares ao CONSELHEIRO
+- **Restrição**: NÃO pode ter cargo de liderança (Diretor, Capitão, etc.)
+- **Visualização**: Mesmas regras do CONSELHEIRO
+- **Edição**: Apenas suas próprias provas
+- **Requisito**: Não batizado + 18+ anos
 
 #### DESBRAVADOR
 - **Tem unidade fixa obrigatória** (unidadeId != null)
@@ -57,6 +76,8 @@
 - **Edição**: Não pode editar provas
 - **Respostas**: Pode responder provas disponíveis
 - Pode visualizar suas notas e histórico
+- **Cargos na Unidade**: Capitão, Secretário, Tesoureiro, Padioleiro, Almoxarife, Capelão
+- **Requisito de Idade**: Tipicamente entre 10-15 anos
 
 ---
 
@@ -65,13 +86,13 @@
 ### PRIVADA
 **Quem pode visualizar:**
 - Criador da prova
-- DIRETORIA do clube
+- DIRETORIA do clube (apenas Diretor e Secretário)
 - ADMIN_CLUBE
 - MASTER (global)
 
 **Quem pode editar:**
 - Criador da prova
-- DIRETORIA do clube
+- DIRETORIA do clube (apenas Diretor e Secretário)
 - ADMIN_CLUBE
 - MASTER (global)
 
@@ -82,14 +103,14 @@
 ### UNIDADE
 **Quem pode visualizar:**
 - Criador da prova
-- Membros da mesma unidade (CONSELHEIRO, DESBRAVADOR)
-- DIRETORIA do clube (todas as unidades)
+- Membros da mesma unidade (CONSELHEIRO, INSTRUTOR, DESBRAVADOR)
+- DIRETORIA do clube com cargo Diretor ou Secretário (acesso a todas as unidades)
 - ADMIN_CLUBE
 - MASTER (global)
 
 **Quem pode editar:**
 - Criador da prova
-- DIRETORIA do clube
+- DIRETORIA do clube (apenas Diretor e Secretário)
 - ADMIN_CLUBE
 - MASTER (global)
 
@@ -106,7 +127,7 @@
 
 **Quem pode editar:**
 - Criador da prova
-- DIRETORIA do clube
+- DIRETORIA do clube (apenas Diretor e Secretário)
 - ADMIN_CLUBE
 - MASTER (global)
 
@@ -123,12 +144,12 @@
 
 **Quem pode editar:**
 - Criador da prova
-- DIRETORIA do clube de origem
+- DIRETORIA do clube de origem (apenas Diretor e Secretário)
 - ADMIN_CLUBE do clube de origem
 - MASTER (global)
 
 **Quem pode clonar:**
-- Qualquer CONSELHEIRO ou DIRETORIA de qualquer clube
+- Qualquer CONSELHEIRO, INSTRUTOR ou DIRETORIA de qualquer clube
 - Clonagem cria uma cópia independente no clube do clonador
 
 **Uso típico**: Banco de provas compartilhadas entre clubes
@@ -142,7 +163,7 @@
 1. **Autor da prova** (criadaPorId)
    - Acesso total: título, questões, valores, visibilidade
 
-2. **DIRETORIA do clube do autor**
+2. **DIRETORIA do clube (apenas Diretor e Secretário)**
    - Acesso total às provas do clube
    - Pode adicionar/editar/remover questões
    - Pode alterar visibilidade
@@ -157,38 +178,99 @@
 
 ### Quem NÃO pode editar?
 
+- DIRETORIA com outros cargos (Diretor Associado, Tesoureiro, Capelão) - podem editar apenas suas próprias provas
 - CONSELHEIRO de outras unidades (mesmo clube)
 - CONSELHEIRO de outros clubes
+- INSTRUTOR de outras unidades
 - DESBRAVADORES (nunca podem editar)
+
+---
+
+## 🏢 Regras de Criação de Clubes
+
+### Quem pode criar clubes?
+
+**MASTER (Papel Global)**
+- Pode criar quantos clubes quiser
+- Não precisa de aprovação
+- Acesso total a todos os clubes
+
+**ADMIN_CLUBE (Papel no Clube)**
+- Pode criar **UM clube apenas**
+- **Fluxo de criação:**
+  1. Usuário (PapelGlobal = USUARIO) solicita ser ADMIN_CLUBE
+  2. MASTER recebe notificação e aprova a solicitação
+  3. Após aprovação, o usuário pode criar seu clube
+  4. Uma vez criado o clube, não pode criar outro
+
+### Dados obrigatórios do Clube
+
+- **Nome**: Nome completo do clube
+- **Slug**: Identificador único (gerado automaticamente ou customizado)
+- **Cidade**: Cidade de origem do clube
+- **Estado**: Estado/província
+- **País**: País
+- **Localização no Mapa**: Latitude e Longitude (opcional, mas recomendado)
 
 ---
 
 ## 👥 Regras de Aprovação de Membros
 
-### Fluxo de Cadastro
+### Fluxo de Cadastro e Solicitação de Vínculo
 
 1. **Usuário cria conta**: PapelGlobal = USUARIO, status não vinculado
-2. **Usuário solicita vínculo ao clube**: Escolhe papel desejado (CONSELHEIRO, DIRETORIA, DESBRAVADOR)
-3. **StatusMembro = PENDENTE**: Aguarda aprovação
-4. **Notificação ao ADMIN_CLUBE**: Email/notificação de nova solicitação
+2. **Usuário preenche dados de membro**:
+   - Nome completo
+   - Data de nascimento
+   - Batizado (Sim/Não)
+   - Unidade (se CONSELHEIRO, INSTRUTOR ou DESBRAVADOR)
+   - Papel desejado (DIRETORIA, CONSELHEIRO, DESBRAVADOR)
+   - Cargo específico (se aplicável):
+     - DIRETORIA: Diretor, Diretor Associado, Secretário, Tesoureiro, Capelão
+     - DESBRAVADOR: Capitão, Secretário, Tesoureiro, Padioleiro, Almoxarife, Capelão
+3. **Sistema valida automaticamente**:
+   - Se NÃO batizado + 18+ anos → papel = INSTRUTOR (automático)
+   - Se CONSELHEIRO solicitado → idade ≥ 16 anos
+   - Se CONSELHEIRO + idade < 18 anos → nomenclatura = CONSELHEIRO_ASSOCIADO
+4. **StatusMembro = PENDENTE**: Aguarda aprovação
+5. **Notificação ao ADMIN_CLUBE**: Email de solicitação de novo membro
 
 ### Aprovação
 
 **Quem pode aprovar:**
-- ADMIN_CLUBE do clube
+- ADMIN_CLUBE do clube (recebe email de notificação)
 - MASTER (global)
 
 **Processo:**
-1. Admin revisa solicitação
-2. Define/confirma papel (CONSELHEIRO, DIRETORIA, DESBRAVADOR)
-3. Se CONSELHEIRO ou DESBRAVADOR: atribui unidade obrigatória
-4. Se DIRETORIA: unidadeId permanece null
-5. StatusMembro = ATIVO
+1. ADMIN_CLUBE revisa solicitação via painel (futuro frontend)
+2. Confirma dados do membro
+3. Define/confirma papel (CONSELHEIRO, DIRETORIA, DESBRAVADOR, INSTRUTOR)
+4. Se CONSELHEIRO, INSTRUTOR ou DESBRAVADOR: confirma unidade obrigatória
+5. Se DIRETORIA: unidadeId permanece null
+6. StatusMembro = ATIVO
+7. Membro recebe email de aprovação
+
+### Validações Automáticas
+
+**Idade mínima para CONSELHEIRO:**
+- Deve ter 16+ anos
+- Se < 18 anos: exibe como "CONSELHEIRO_ASSOCIADO" (nomenclatura apenas)
+
+**Papel INSTRUTOR (automático):**
+- Membro NÃO batizado + 18+ anos = INSTRUTOR
+- INSTRUTOR não pode ter cargo de liderança
+- Sistema atribui automaticamente este papel
+
+**Batismo:**
+- DIRETORIA: Deve ser batizado (obrigatório)
+- CONSELHEIRO: Deve ser batizado (obrigatório)
+- INSTRUTOR: NÃO batizado (critério de atribuição)
+- DESBRAVADOR: Batismo não é obrigatório
 
 ### Rejeição/Bloqueio
 
-- Rejeitar: Remove o vínculo MembroClube
-- Bloquear: StatusMembro = BLOQUEADO (membro não pode acessar)
+- **Rejeitar**: Remove o vínculo MembroClube, envia email de rejeição
+- **Bloquear**: StatusMembro = BLOQUEADO (membro não pode acessar recursos do clube)
 
 ---
 
@@ -311,8 +393,11 @@
 
 ### Ao criar MembroClube
 
-- Se `papel = CONSELHEIRO` ou `DESBRAVADOR`: `unidadeId` é **obrigatório**
-- Se `papel = DIRETORIA` ou `ADMIN_CLUBE`: `unidadeId` deve ser **null**
+- Se `papel = CONSELHEIRO`, `INSTRUTOR` ou `DESBRAVADOR`: `unidadeId` é **obrigatório**
+- Se `papel = ADMIN_CLUBE`: `unidadeId` deve ser **null**
+- Se `papel = DIRETORIA`:
+  - Se `cargoEspecifico = "Diretor"` ou `"Secretário"`: `unidadeId` deve ser **null**
+  - Se `cargoEspecifico = "Diretor Associado"`, `"Tesoureiro"` ou `"Capelão"`: `unidadeId` é **obrigatório**
 
 ### Ao criar Prova
 
@@ -336,22 +421,28 @@
 
 ## 📊 Resumo de Permissões
 
-| Ação | DESBRAVADOR | CONSELHEIRO | DIRETORIA | ADMIN_CLUBE | MASTER |
-|------|-------------|-------------|-----------|-------------|--------|
-| Ver provas PRIVADAS (próprias) | ❌ | ✅ (só suas) | ✅ (todas do clube) | ✅ | ✅ |
-| Ver provas UNIDADE | ✅ (só sua unidade) | ✅ (só sua unidade) | ✅ (todas) | ✅ | ✅ |
-| Ver provas CLUBE | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Ver provas PUBLICAS | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Criar provas | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Editar provas próprias | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Editar provas de outros | ❌ | ❌ | ✅ (do clube) | ✅ (do clube) | ✅ |
-| Responder provas | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Corrigir provas | ❌ | ✅ (só suas) | ✅ (todas do clube) | ✅ | ✅ |
-| Aprovar membros | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Clonar provas públicas | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Gerar questões por IA | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Ação | DESBRAVADOR | INSTRUTOR | CONSELHEIRO | DIRETORIA¹ | DIRETORIA² | ADMIN_CLUBE | MASTER |
+|------|-------------|-----------|-------------|-----------|-----------|-------------|--------|
+| Ver provas PRIVADAS (próprias) | ❌ | ✅ (só suas) | ✅ (só suas) | ✅ (só suas) | ✅ (todas do clube) | ✅ | ✅ |
+| Ver provas UNIDADE | ✅ (só sua unidade) | ✅ (só sua unidade) | ✅ (só sua unidade) | ✅ (só sua unidade) | ✅ (todas) | ✅ | ✅ |
+| Ver provas CLUBE | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Ver provas PUBLICAS | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Criar provas | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Editar provas próprias | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Editar provas de outros | ❌ | ❌ | ❌ | ❌ | ✅ (do clube) | ✅ (do clube) | ✅ |
+| Responder provas | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Corrigir provas | ❌ | ✅ (só suas) | ✅ (só suas) | ✅ (só suas) | ✅ (todas do clube) | ✅ | ✅ |
+| Aprovar membros | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Criar clubes | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ (1 clube) | ✅ (ilimitado) |
+| Clonar provas públicas | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Gerar questões por IA | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Ter cargo de liderança | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+**Legenda:**
+- **DIRETORIA¹**: Diretor Associado, Tesoureiro, Capelão (têm unidade fixa)
+- **DIRETORIA²**: Diretor, Secretário (sem unidade fixa, acesso total)
 
 ---
 
-**Última atualização**: 2025-12-04
-**Versão**: 1.1 - Adicionado papel DIRETORIA
+**Última atualização**: 2025-12-10
+**Versão**: 1.2 - Sessão 04: Adicionado papel INSTRUTOR, regras de criação de clubes, cargos específicos e validações de idade/batismo

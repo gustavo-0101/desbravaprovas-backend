@@ -5,9 +5,13 @@ import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
+import { CommonModule } from './common/common.module';
 import { AuthModule } from './auth/auth.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { EmailModule } from './email/email.module';
+import { ClubesModule } from './clubes/clubes.module';
+import { UnidadesModule } from './unidades/unidades.module';
+import { MembrosModule } from './membros/membros.module';
 
 @Module({
   imports: [
@@ -21,9 +25,13 @@ import { EmailModule } from './email/email.module';
       },
     ]),
     PrismaModule,
+    CommonModule,
     AuthModule,
     UsuariosModule,
     EmailModule,
+    ClubesModule,
+    UnidadesModule,
+    MembrosModule,
   ],
   controllers: [AppController],
   providers: [

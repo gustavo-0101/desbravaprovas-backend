@@ -617,6 +617,285 @@ Response: 401 Unauthorized
 
 ---
 
+## Papéis de Clube e Permissões
+
+A partir da **Sessão 04**, o sistema implementa um modelo hierárquico de permissões com **Papéis Globais** e **Papéis de Clube**.
+
+### Papéis Globais (PapelGlobal)
+
+Definidos no modelo `Usuario`:
+
+| Papel | Descrição | Permissões |
+|-------|-----------|------------|
+| **USUARIO** | Usuário comum | Pode participar de clubes |
+| **MASTER** | Administrador do sistema | Acesso total, pode criar clubes ilimitados |
+
+### Papéis de Clube (PapelClube)
+
+Definidos no modelo `MembroClube`:
+
+| Papel | Descrição | Unidade Fixa | Criação de Clubes |
+|-------|-----------|--------------|-------------------|
+| **ADMIN_CLUBE** | Administrador do clube | Não | Pode criar 1 clube (requer aprovação MASTER) |
+| **DIRETORIA** | Diretoria do clube | Depende do cargo* | Não |
+| **CONSELHEIRO** | Conselheiro de unidade | Sim | Não |
+| **INSTRUTOR** | Instrutor (não batizado, 18+) | Sim | Não |
+| **DESBRAVADOR** | Desbravador | Sim | Não |
+
+*\*Cargos da DIRETORIA:*
+- **Diretor, Secretário**: Não têm unidade fixa, acesso total às provas do clube
+- **Demais cargos** (Diretor Associado, Tesoureiro, Capelão): Têm unidade fixa, permissões de CONSELHEIRO
+
+### Regras de Negócio
+
+#### Criação de Clubes
+
+```typescript
+// Apenas MASTER e ADMIN_CLUBE podem criar clubes
+POST /clubes
+Authorization: Bearer <token>
+
+// MASTER: clubes ilimitados
+// ADMIN_CLUBE: máximo 1 clube (validado no backend)
+```
+
+#### Vinculação a Clubes
+
+```typescript
+// Qualquer usuário autenticado pode solicitar vínculo
+POST /membros/solicitar-vinculo
+{
+  "clubeId": 1,
+  "papelDesejado": "CONSELHEIRO",
+  "dataNascimento": "2000-01-15",
+  "batizado": true,
+  "unidadeId": 1,          // obrigatório para CONSELHEIRO/INSTRUTOR/DESBRAVADOR
+  "cargoEspecifico": null  // obrigatório para DIRETORIA/DESBRAVADOR
+}
+```
+
+**Ajustes Automáticos:**
+- Se **não batizado** + **18+ anos** → papel alterado para **INSTRUTOR** automaticamente
+- Solicitação fica com `status: PENDENTE` aguardando aprovação
+
+#### Aprovação de Membros
+
+```typescript
+// Apenas ADMIN_CLUBE do clube ou MASTER podem aprovar
+POST /membros/:id/aprovar
+Authorization: Bearer <token>
+{
+  "papel": "CONSELHEIRO",
+  "unidadeId": 1,
+  "cargoEspecifico": null
+}
+```
+
+**Validações:**
+- **CONSELHEIRO**: idade mínima 16 anos, deve ser batizado
+- **DIRETORIA**: deve ser batizado
+- **INSTRUTOR**: NÃO deve ser batizado, idade mínima 18 anos
+
+**Notificações por Email:**
+- ADMIN_CLUBE recebe email quando há nova solicitação
+- Membro recebe email quando aprovado ou rejeitado
+
+#### Permissões por Papel
+
+**MASTER:**
+- ✅ Criar clubes ilimitados
+- ✅ Aprovar/rejeitar membros de qualquer clube
+- ✅ Editar/remover membros de qualquer clube
+- ✅ Acesso total ao sistema
+
+**ADMIN_CLUBE:**
+- ✅ Criar 1 clube (campo `clubeCriadoId` no Usuario)
+- ✅ Aprovar/rejeitar membros do seu clube
+- ✅ Editar/remover membros do seu clube
+- ✅ Gerenciar unidades do seu clube
+- ❌ Não pode aprovar membros de outros clubes
+
+**DIRETORIA (Diretor, Secretário):**
+- ✅ Visualizar todas as provas do clube
+- ✅ Sem unidade fixa (`unidadeId = null`)
+- ❌ Não aprovam/rejeitam membros
+
+**DIRETORIA (outros cargos):**
+- ✅ Mesmas permissões de CONSELHEIRO
+- ✅ Vinculado a uma unidade específica
+
+**CONSELHEIRO/INSTRUTOR:**
+- ✅ Visualizar provas da sua unidade
+- ✅ Vinculado a uma unidade específica
+- ❌ Não gerenciam membros
+
+**DESBRAVADOR:**
+- ✅ Participar de atividades da unidade
+- ✅ Vinculado a uma unidade específica
+- ❌ Sem permissões administrativas
+
+### Hierarquia de Verificação
+
+```typescript
+// Pattern triple-check implementado nos services
+const ehMaster = usuario.papelGlobal === PapelGlobal.MASTER;
+const ehAdminClube = await prisma.membroClube.findFirst({
+  where: {
+    usuarioId: usuario.id,
+    clubeId: clube.id,
+    papel: PapelClube.ADMIN_CLUBE,
+    status: StatusMembro.ATIVO
+  }
+});
+
+if (!ehMaster && !ehAdminClube) {
+  throw new ForbiddenException('Sem permissão');
+}
+```
+
+### Status de Membros
+
+| Status | Descrição |
+|--------|-----------|
+| **PENDENTE** | Aguardando aprovação do ADMIN_CLUBE |
+| **ATIVO** | Membro aprovado e ativo no clube |
+| **BLOQUEADO** | Membro bloqueado (não implementado) |
+
+### Endpoints de Clubes
+
+```typescript
+// Criar clube (MASTER ou ADMIN_CLUBE)
+POST /clubes
+Authorization: Bearer <token>
+
+// Listar clubes (público)
+GET /clubes
+
+// Buscar clube (público)
+GET /clubes/:id
+
+// Atualizar clube (MASTER ou criador)
+PATCH /clubes/:id
+
+// Remover clube (MASTER ou criador)
+DELETE /clubes/:id
+```
+
+### Endpoints de Unidades
+
+```typescript
+// Criar unidade (MASTER ou ADMIN_CLUBE)
+POST /unidades
+Authorization: Bearer <token>
+
+// Listar unidades (público, filtro por clubeId)
+GET /unidades?clubeId=1
+
+// Buscar unidade (público)
+GET /unidades/:id
+
+// Atualizar unidade (MASTER ou ADMIN_CLUBE)
+PATCH /unidades/:id
+
+// Remover unidade (MASTER ou ADMIN_CLUBE)
+// Falha se unidade tiver membros vinculados
+DELETE /unidades/:id
+```
+
+### Endpoints de Membros
+
+```typescript
+// Solicitar vínculo (autenticado)
+POST /membros/solicitar-vinculo
+Authorization: Bearer <token>
+
+// Aprovar membro (MASTER ou ADMIN_CLUBE)
+POST /membros/:id/aprovar
+Authorization: Bearer <token>
+
+// Rejeitar membro (MASTER ou ADMIN_CLUBE)
+DELETE /membros/:id/rejeitar
+Authorization: Bearer <token>
+
+// Listar solicitações pendentes (MASTER ou ADMIN_CLUBE)
+GET /membros/solicitacoes/:clubeId
+Authorization: Bearer <token>
+
+// Listar membros (público, filtro por clubeId)
+GET /membros?clubeId=1
+
+// Buscar membro (público)
+GET /membros/:id
+
+// Atualizar membro (MASTER ou ADMIN_CLUBE)
+PATCH /membros/:id
+Authorization: Bearer <token>
+
+// Remover membro (MASTER, ADMIN_CLUBE ou próprio membro)
+DELETE /membros/:id
+Authorization: Bearer <token>
+```
+
+### Decorator GetUser
+
+Novo decorator para extrair dados do usuário autenticado:
+
+```typescript
+import { GetUser } from '../common/decorators/get-user.decorator';
+
+@Post('solicitar-vinculo')
+@UseGuards(JwtAuthGuard)
+solicitarVinculo(
+  @Body() dto: SolicitarVinculoDto,
+  @GetUser('sub') usuarioId: number  // Extrai apenas o ID
+) {
+  return this.membrosService.solicitarVinculo(dto, usuarioId);
+}
+
+// Ou extrair usuário completo
+@Get('perfil')
+@UseGuards(JwtAuthGuard)
+getPerfil(@GetUser() user: any) {
+  return user;
+}
+```
+
+### Emails de Notificação
+
+**Nova Solicitação (para ADMIN_CLUBE):**
+```
+Assunto: Nova solicitação de membro - [Nome do Clube]
+Cor: #7c3aed (roxo)
+Conteúdo:
+- Nome e email do solicitante
+- Papel desejado
+- Unidade (se aplicável)
+- Link para painel de gerenciamento
+```
+
+**Solicitação Aprovada (para membro):**
+```
+Assunto: Bem-vindo ao [Nome do Clube]! - Desbrava Provas
+Cor: #10b981 (verde)
+Conteúdo:
+- Confirmação de aprovação
+- Papel aprovado
+- Unidade (se aplicável)
+- Link para acessar plataforma
+```
+
+**Solicitação Rejeitada (para membro):**
+```
+Assunto: Atualização sobre sua solicitação - [Nome do Clube]
+Cor: #f59e0b (laranja/amarelo)
+Conteúdo:
+- Informação de não aprovação
+- Mensagem de encorajamento
+- Link para voltar à plataforma
+```
+
+---
+
 ## Arquitetura
 
 ### Fluxo de Autenticação

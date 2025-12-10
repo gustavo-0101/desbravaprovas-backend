@@ -38,12 +38,16 @@ model Usuario {
   // OAuth Google
   googleId          String?          @unique
 
+  // Controle de criação de clube (ADMIN_CLUBE pode criar apenas 1)
+  clubeCriadoId     Int?             @unique
+
   criadoEm          DateTime         @default(now())
   atualizadoEm      DateTime         @updatedAt
 
   membrosClube      MembroClube[]
   provasCriadas     Prova[]          @relation("ProvasCriadas")
   respostas         RespostaProva[]
+  clubeCriado       Clube?           @relation("ClubeCriado", fields: [clubeCriadoId], references: [id])
 }
 
 enum PapelGlobal {
@@ -55,11 +59,21 @@ model Clube {
   id        Int            @id @default(autoincrement())
   nome      String
   slug      String         @unique   // "aguias-da-serra"
+
+  // Localização
+  cidade    String
+  estado    String
+  pais      String         @default("Brasil")
+  latitude  Float?
+  longitude Float?
+
   criadoEm  DateTime       @default(now())
+  atualizadoEm DateTime    @updatedAt
 
   membros   MembroClube[]
   unidades  Unidade[]
   provas    Prova[]
+  criadoPor Usuario?       @relation("ClubeCriado")
 }
 
 model Unidade {
@@ -74,17 +88,24 @@ model Unidade {
 }
 
 model MembroClube {
-  id          Int           @id @default(autoincrement())
-  usuarioId   Int
-  clubeId     Int
-  unidadeId   Int?
-  papel       PapelClube
-  status      StatusMembro   @default(PENDENTE)
-  criadoEm    DateTime       @default(now())
+  id                Int           @id @default(autoincrement())
+  usuarioId         Int
+  clubeId           Int
+  unidadeId         Int?
+  papel             PapelClube
+  status            StatusMembro   @default(PENDENTE)
 
-  usuario     Usuario        @relation(fields: [usuarioId], references: [id])
-  clube       Clube          @relation(fields: [clubeId], references: [id])
-  unidade     Unidade?       @relation(fields: [unidadeId], references: [id])
+  // Dados adicionais do membro
+  dataNascimento    DateTime
+  batizado          Boolean        @default(false)
+  cargoEspecifico   String?        // Diretor, Capitão, Secretário, etc.
+
+  criadoEm          DateTime       @default(now())
+  atualizadoEm      DateTime       @updatedAt
+
+  usuario           Usuario        @relation(fields: [usuarioId], references: [id])
+  clube             Clube          @relation(fields: [clubeId], references: [id])
+  unidade           Unidade?       @relation(fields: [unidadeId], references: [id])
 
   @@unique([usuarioId, clubeId]) // um vínculo único por usuário por clube
 }
@@ -92,7 +113,8 @@ model MembroClube {
 enum PapelClube {
   ADMIN_CLUBE
   DIRETORIA     // acesso total às provas do clube, sem unidade fixa
-  CONSELHEIRO
+  CONSELHEIRO   // mínimo 16 anos, batizado
+  INSTRUTOR     // não batizado + 18+ anos (automático)
   DESBRAVADOR
 }
 
