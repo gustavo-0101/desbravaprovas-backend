@@ -120,6 +120,267 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ---
 
+### GET /auth/verificar-email
+
+Verifica o email do usuário usando o token enviado por email após o registro.
+
+**Query Parameters:**
+- `token`: Token de verificação (string, required)
+
+**Exemplo:**
+```
+GET /auth/verificar-email?token=abc123def456...
+```
+
+**Response (200):**
+```json
+{
+  "message": "Email verificado com sucesso!"
+}
+```
+
+**Comportamento:**
+1. Marca o email como verificado no banco de dados
+2. Remove o token de verificação
+3. Envia email de boas-vindas automaticamente
+
+**Erros:**
+- `400 Bad Request`: Token inválido ou email já verificado
+
+---
+
+### POST /auth/reenviar-verificacao
+
+Reenvia o email de verificação para o usuário.
+
+**Request Body:**
+```json
+{
+  "email": "joao@exemplo.com"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Email de verificação reenviado com sucesso!"
+}
+```
+
+**Validações:**
+- Email deve estar cadastrado no sistema
+- Email não pode estar verificado
+- Usuário não pode ter feito login com Google
+
+**Erros:**
+- `400 Bad Request`:
+  - Usuário não encontrado
+  - Email já verificado
+  - Usuário usa login com Google
+
+---
+
+## Verificação de Email
+
+### Fluxo Completo
+
+1. **Registro**: Usuário se cadastra com email/senha
+2. **Token Gerado**: Sistema gera token único de 64 caracteres (hex)
+3. **Email Enviado**: Email com link de verificação é enviado
+4. **Verificação**: Usuário clica no link e verifica o email
+5. **Boas-vindas**: Sistema envia email de boas-vindas automaticamente
+
+### Template do Email de Verificação
+
+O email de verificação contém:
+- Saudação personalizada com nome do usuário
+- Botão clicável para verificar email
+- Link alternativo caso o botão não funcione
+- Design responsivo e profissional
+
+**Link de verificação:**
+```
+http://localhost:3000/auth/verificar-email?token=abc123def456...
+```
+
+### Template do Email de Boas-vindas
+
+Enviado automaticamente após verificação bem-sucedida:
+- Confirmação de email verificado
+- Botão para acessar a plataforma
+- Mensagem de boas-vindas
+
+### Configuração de Email
+
+Adicione as seguintes variáveis ao `.env`:
+
+```env
+# Email Configuration (NodeMailer)
+MAIL_HOST="smtp.gmail.com"
+MAIL_PORT=587
+MAIL_USER="seu-email@gmail.com"
+MAIL_PASS="sua-app-password"
+MAIL_FROM="noreply@desbravaprovas.com"
+
+# Application URL
+APP_URL="http://localhost:3000"
+```
+
+**Para Gmail:**
+1. Ative a verificação em duas etapas
+2. Gere uma App Password: https://support.google.com/accounts/answer/185833
+3. Use a App Password no `MAIL_PASS`
+
+### Segurança do Token
+
+- **Geração**: `crypto.randomBytes(32).toString('hex')` - 64 caracteres hexadecimais
+- **Unicidade**: Garantida pelo Prisma (`@unique`)
+- **Validade**: Sem expiração automática (pode ser implementado)
+- **One-time use**: Token é removido após verificação
+
+### Casos Especiais
+
+**Usuários Google OAuth:**
+- Não recebem email de verificação
+- `emailVerificado` é automaticamente `true`
+- Não podem reenviar verificação
+
+**Alteração de Email:**
+- Se usuário alterar email, `emailVerificado` volta para `false`
+- Novo token é gerado automaticamente
+- Novo email de verificação é enviado
+
+---
+
+## Recuperação de Senha
+
+Sistema de recuperação de senha com tokens temporários que expiram em 1 hora.
+
+### POST /auth/solicitar-recuperacao-senha
+
+Solicita recuperação de senha enviando email com link.
+
+**Request Body:**
+```json
+{
+  "email": "usuario@exemplo.com"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Se o email existir, um link de recuperação será enviado."
+}
+```
+
+**Comportamento:**
+1. Verifica se email existe no banco
+2. Valida que não é usuário Google (não tem senha)
+3. Gera token de recuperação (64 caracteres hex)
+4. Define expiração do token (1 hora)
+5. Envia email com link de recuperação
+6. Retorna mensagem genérica (segurança: não revela se email existe)
+
+**Erros:**
+- `400 Bad Request`: Usuário usa login com Google
+
+---
+
+### POST /auth/redefinir-senha
+
+Redefine a senha usando o token recebido por email.
+
+**Request Body:**
+```json
+{
+  "token": "abc123def456...",
+  "novaSenha": "novaSenha123"
+}
+```
+
+**Validações:**
+- `token`: string (required)
+- `novaSenha`: mínimo 6 caracteres (required)
+
+**Response (200):**
+```json
+{
+  "message": "Senha redefinida com sucesso!"
+}
+```
+
+**Comportamento:**
+1. Busca usuário por `tokenRecuperacaoSenha`
+2. Valida se token não expirou (1 hora)
+3. Faz hash da nova senha com bcrypt
+4. Atualiza senha no banco
+5. Remove token de recuperação
+6. Retorna mensagem de sucesso
+
+**Erros:**
+- `400 Bad Request`:
+  - Token de recuperação inválido
+  - Token de recuperação expirado
+
+---
+
+### Fluxo Completo de Recuperação
+
+1. **Solicitação**: Usuário esquece senha e clica em "Esqueci minha senha"
+2. **Formulário**: Usuário informa seu email
+3. **Token Gerado**: Sistema gera token único de 64 caracteres
+4. **Expiração**: Token válido por 1 hora
+5. **Email Enviado**: Email com link de recuperação
+6. **Redefinição**: Usuário clica no link e define nova senha
+7. **Limpeza**: Token é removido após uso
+
+### Template do Email de Recuperação
+
+O email de recuperação contém:
+- Saudação personalizada com nome do usuário
+- Aviso de validade do link (1 hora)
+- Botão call-to-action "Redefinir Senha"
+- Mensagem de segurança (ignorar se não solicitou)
+- Link alternativo em texto
+- Design responsivo com cores de alerta (#dc2626 - vermelho)
+
+**Link de recuperação:**
+```
+http://localhost:3000/auth/redefinir-senha?token=abc123def456...
+```
+
+### Segurança do Token de Recuperação
+
+- **Geração**: `crypto.randomBytes(32).toString('hex')` - 64 caracteres hexadecimais
+- **Unicidade**: Garantida pelo Prisma (`@unique`)
+- **Expiração**: 1 hora (3600 segundos)
+- **One-time use**: Token é removido após uso
+- **Validação de expiração**: Comparação com `Date.now()`
+
+### Casos Especiais
+
+**Usuários Google OAuth:**
+- Não podem solicitar recuperação de senha
+- Lança erro: "Usuários que fazem login com Google não podem recuperar senha"
+- Devem usar login do Google
+
+**Múltiplas Solicitações:**
+- Cada nova solicitação sobrescreve o token anterior
+- Apenas o token mais recente é válido
+- Tokens antigos são invalidados automaticamente
+
+**Email Não Cadastrado:**
+- Retorna mensagem genérica (não revela se email existe)
+- Medida de segurança contra enumeração de usuários
+- "Se o email existir, um link de recuperação será enviado."
+
+**Token Expirado:**
+- Usuário deve solicitar nova recuperação
+- Mensagem clara: "Token de recuperação expirado"
+
+---
+
 ## Google OAuth2
 
 Sistema de autenticação com Google (Login Social).
