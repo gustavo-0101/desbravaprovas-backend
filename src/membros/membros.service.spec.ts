@@ -414,4 +414,205 @@ describe('MembrosService', () => {
       await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
     });
   });
+
+  describe('listarSolicitacoes', () => {
+    it('should list pending solicitações for MASTER', async () => {
+      const mockUsuario = { id: 1, papelGlobal: PapelGlobal.MASTER };
+      const mockSolicitacoes = [
+        {
+          id: 1,
+          usuarioId: 2,
+          clubeId: 1,
+          status: StatusMembro.PENDENTE,
+          usuario: { id: 2, nome: 'João', email: 'joao@test.com' },
+          unidade: { id: 1, nome: 'Unidade A' },
+        },
+      ];
+
+      mockPrismaService.usuario.findUnique.mockResolvedValue(mockUsuario);
+      mockPrismaService.membroClube.findFirst.mockResolvedValue(null); // Não é ADMIN_CLUBE
+      mockPrismaService.membroClube.findMany.mockResolvedValue(mockSolicitacoes);
+
+      const result = await service.listarSolicitacoes(1, 1);
+
+      expect(result).toEqual(mockSolicitacoes);
+      expect(mockPrismaService.membroClube.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { clubeId: 1, status: StatusMembro.PENDENTE },
+        }),
+      );
+    });
+
+    it('should list pending solicitações for ADMIN_CLUBE', async () => {
+      const mockUsuario = { id: 2, papelGlobal: PapelGlobal.USUARIO };
+      const mockMembroAdminClube = {
+        id: 10,
+        usuarioId: 2,
+        clubeId: 1,
+        papel: PapelClube.ADMIN_CLUBE,
+        status: StatusMembro.ATIVO,
+      };
+      const mockSolicitacoes = [
+        {
+          id: 1,
+          usuarioId: 3,
+          clubeId: 1,
+          status: StatusMembro.PENDENTE,
+        },
+      ];
+
+      mockPrismaService.usuario.findUnique.mockResolvedValue(mockUsuario);
+      mockPrismaService.membroClube.findFirst.mockResolvedValue(mockMembroAdminClube);
+      mockPrismaService.membroClube.findMany.mockResolvedValue(mockSolicitacoes);
+
+      const result = await service.listarSolicitacoes(1, 2);
+
+      expect(result).toEqual(mockSolicitacoes);
+    });
+
+    it('should throw ForbiddenException if user is not MASTER or ADMIN_CLUBE', async () => {
+      const mockUsuario = { id: 3, papelGlobal: PapelGlobal.USUARIO };
+
+      mockPrismaService.usuario.findUnique.mockResolvedValue(mockUsuario);
+      mockPrismaService.membroClube.findFirst.mockResolvedValue(null);
+
+      await expect(service.listarSolicitacoes(1, 3)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
+  describe('update', () => {
+    it('should update membro for MASTER', async () => {
+      const mockMembro = {
+        id: 1,
+        usuarioId: 2,
+        clubeId: 1,
+        unidadeId: 1,
+        papel: PapelClube.DESBRAVADOR,
+        status: StatusMembro.ATIVO,
+      };
+      const mockUsuario = { id: 1, papelGlobal: PapelGlobal.MASTER };
+      const mockUpdatedMembro = { ...mockMembro, papel: PapelClube.CONSELHEIRO };
+
+      mockPrismaService.membroClube.findUnique.mockResolvedValue(mockMembro);
+      mockPrismaService.usuario.findUnique.mockResolvedValue(mockUsuario);
+      mockPrismaService.membroClube.update.mockResolvedValue(mockUpdatedMembro);
+
+      const result = await service.update(1, { papel: PapelClube.CONSELHEIRO }, 1);
+
+      expect(result).toEqual(mockUpdatedMembro);
+      expect(mockPrismaService.membroClube.update).toHaveBeenCalled();
+    });
+
+    it('should update membro for ADMIN_CLUBE', async () => {
+      const mockMembro = {
+        id: 1,
+        usuarioId: 2,
+        clubeId: 1,
+        unidadeId: 1,
+        papel: PapelClube.DESBRAVADOR,
+        status: StatusMembro.ATIVO,
+      };
+      const mockUsuario = { id: 3, papelGlobal: PapelGlobal.USUARIO };
+      const mockMembroAdminClube = {
+        id: 10,
+        usuarioId: 3,
+        clubeId: 1,
+        papel: PapelClube.ADMIN_CLUBE,
+        status: StatusMembro.ATIVO,
+      };
+      const mockUpdatedMembro = { ...mockMembro, papel: PapelClube.CONSELHEIRO };
+
+      mockPrismaService.membroClube.findUnique.mockResolvedValue(mockMembro);
+      mockPrismaService.usuario.findUnique.mockResolvedValue(mockUsuario);
+      mockPrismaService.membroClube.findFirst.mockResolvedValue(mockMembroAdminClube);
+      mockPrismaService.membroClube.update.mockResolvedValue(mockUpdatedMembro);
+
+      const result = await service.update(1, { papel: PapelClube.CONSELHEIRO }, 3);
+
+      expect(result).toEqual(mockUpdatedMembro);
+    });
+
+    it('should throw ForbiddenException if user is not MASTER or ADMIN_CLUBE', async () => {
+      const mockMembro = {
+        id: 1,
+        usuarioId: 2,
+        clubeId: 1,
+        papel: PapelClube.DESBRAVADOR,
+        status: StatusMembro.ATIVO,
+      };
+      const mockUsuario = { id: 4, papelGlobal: PapelGlobal.USUARIO };
+
+      mockPrismaService.membroClube.findUnique.mockResolvedValue(mockMembro);
+      mockPrismaService.usuario.findUnique.mockResolvedValue(mockUsuario);
+      mockPrismaService.membroClube.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.update(1, { papel: PapelClube.CONSELHEIRO }, 4),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw BadRequestException if unidade does not belong to clube', async () => {
+      const mockMembro = {
+        id: 1,
+        usuarioId: 2,
+        clubeId: 1,
+        unidadeId: 1,
+        papel: PapelClube.DESBRAVADOR,
+        status: StatusMembro.ATIVO,
+      };
+      const mockUsuario = { id: 1, papelGlobal: PapelGlobal.MASTER };
+      const mockUnidade = { id: 2, nome: 'Unidade B', clubeId: 999 }; // Clube diferente
+
+      mockPrismaService.membroClube.findUnique.mockResolvedValue(mockMembro);
+      mockPrismaService.usuario.findUnique.mockResolvedValue(mockUsuario);
+      mockPrismaService.unidade.findUnique.mockResolvedValue(mockUnidade);
+
+      await expect(service.update(1, { unidadeId: 2 }, 1)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe('remove', () => {
+    it('should remove membro for MASTER', async () => {
+      const mockMembro = {
+        id: 1,
+        usuarioId: 2,
+        clubeId: 1,
+        papel: PapelClube.DESBRAVADOR,
+        status: StatusMembro.ATIVO,
+      };
+      const mockUsuario = { id: 1, papelGlobal: PapelGlobal.MASTER };
+
+      mockPrismaService.membroClube.findUnique.mockResolvedValue(mockMembro);
+      mockPrismaService.usuario.findUnique.mockResolvedValue(mockUsuario);
+      mockPrismaService.membroClube.delete.mockResolvedValue(mockMembro);
+
+      const result = await service.remove(1, 1);
+
+      expect(result).toEqual({ message: 'Membro removido com sucesso' });
+      expect(mockPrismaService.membroClube.delete).toHaveBeenCalledWith({
+        where: { id: 1 },
+      });
+    });
+
+    it('should throw ForbiddenException if user is not MASTER or ADMIN_CLUBE', async () => {
+      const mockMembro = {
+        id: 1,
+        usuarioId: 2,
+        clubeId: 1,
+        papel: PapelClube.DESBRAVADOR,
+        status: StatusMembro.ATIVO,
+      };
+      const mockUsuario = { id: 3, papelGlobal: PapelGlobal.USUARIO };
+
+      mockPrismaService.membroClube.findUnique.mockResolvedValue(mockMembro);
+      mockPrismaService.usuario.findUnique.mockResolvedValue(mockUsuario);
+      mockPrismaService.membroClube.findFirst.mockResolvedValue(null);
+
+      await expect(service.remove(1, 3)).rejects.toThrow(ForbiddenException);
+    });
+  });
 });
