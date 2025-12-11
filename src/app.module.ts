@@ -12,6 +12,7 @@ import { EmailModule } from './email/email.module';
 import { ClubesModule } from './clubes/clubes.module';
 import { UnidadesModule } from './unidades/unidades.module';
 import { MembrosModule } from './membros/membros.module';
+import { ProvasModule } from './provas/provas.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { MembrosModule } from './membros/membros.module';
     ClubesModule,
     UnidadesModule,
     MembrosModule,
+    ProvasModule,
   ],
   controllers: [AppController],
   providers: [

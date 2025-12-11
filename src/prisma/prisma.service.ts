@@ -71,7 +71,6 @@ export class PrismaService
       this.membroClube.deleteMany(),
       this.unidade.deleteMany(),
       this.clube.deleteMany(),
-      this.especialidade.deleteMany(),
       this.usuario.deleteMany(),
     ]);
 

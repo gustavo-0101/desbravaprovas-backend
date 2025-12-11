@@ -13,10 +13,9 @@ generator client {
   - Clube: grupo (ex.: "Águias da Serra").
   - Unidade: subdivisão dentro do clube (cada conselheiro/desbravador pertence a uma).
   - MembroClube: vínculo Usuario <-> Clube + Unidade + papel dentro do clube.
-  - Especialidade: áreas de conhecimento de provas.
   - Prova: criada dentro de um clube (e opcionalmente de uma unidade), com visibilidade.
-  - Questao: questões de múltipla escolha ou dissertativas.
-  - RespostaProva: respostas enviadas por um desbravador.
+  - Questao: questões de múltipla escolha, dissertativas ou práticas.
+  - RespostaProva: respostas enviadas por um membro.
 */
 
 model Usuario {
@@ -46,6 +45,7 @@ model Usuario {
 
   membrosClube      MembroClube[]
   provasCriadas     Prova[]          @relation("ProvasCriadas")
+  provasAutoria     Prova[]          @relation("ProvasAutoria")
   respostas         RespostaProva[]
   clubeCriado       Clube?           @relation("ClubeCriado", fields: [clubeCriadoId], references: [id])
 }
@@ -124,63 +124,77 @@ enum StatusMembro {
   BLOQUEADO
 }
 
-model Especialidade {
-  id          Int        @id @default(autoincrement())
-  nome        String
-  descricao   String?
-
-  provas      Prova[]
+enum CategoriaEspecialidade {
+  ADRA
+  ARTES_E_HABILIDADES_MANUAIS
+  ATIVIDADES_AGRICOLAS
+  ATIVIDADES_MISSIONARIAS_E_COMUNITARIAS
+  ATIVIDADES_PROFISSIONAIS
+  ATIVIDADES_RECREATIVAS
+  CIENCIA_E_SAUDE
+  ESTUDOS_DA_NATUREZA
+  HABILIDADES_DOMESTICAS
 }
 
 model Prova {
-  id                Int                @id @default(autoincrement())
-  titulo            String
-  clubeId           Int
-  unidadeId         Int?
-  especialidadeId   Int?
-  criadaPorId       Int
-  valorTotal        Int                @default(100)
-  visibilidade      VisibilidadeProva  @default(CLUBE)
+  id                  Int                      @id @default(autoincrement())
+  titulo              String
+  descricao           String?                  @db.Text
+  categoria           CategoriaEspecialidade
+  clubeId             Int
+  unidadeId           Int?                     // Obrigatório se PRIVADA_UNIDADE
+  criadorId           Int
+  autorOriginalId     Int?                     // Se copiada, mantém autor original
+  provaOriginalId     Int?                     // Se copiada, referencia prova original
+  visibilidade        VisibilidadeProva        @default(PRIVADA_CLUBE)
+  urlReferenciaMDA    String?                  // Slug da especialidade no MDA Wiki
 
-  criadoEm          DateTime           @default(now())
-  atualizadoEm      DateTime           @updatedAt
+  criadoEm            DateTime                 @default(now())
+  atualizadoEm        DateTime                 @updatedAt
 
-  clube             Clube              @relation(fields: [clubeId], references: [id])
-  unidade           Unidade?           @relation(fields: [unidadeId], references: [id])
-  especialidade     Especialidade?     @relation(fields: [especialidadeId], references: [id])
-  criadaPor         Usuario            @relation("ProvasCriadas", fields: [criadaPorId], references: [id])
+  clube               Clube                    @relation(fields: [clubeId], references: [id])
+  unidade             Unidade?                 @relation(fields: [unidadeId], references: [id])
+  criador             Usuario                  @relation("ProvasCriadas", fields: [criadorId], references: [id])
+  autorOriginal       Usuario?                 @relation("ProvasAutoria", fields: [autorOriginalId], references: [id])
+  provaOriginal       Prova?                   @relation("CopiaProva", fields: [provaOriginalId], references: [id])
+  copias              Prova[]                  @relation("CopiaProva")
+  questoes            Questao[]
+  respostas           RespostaProva[]
 
-  questoes          Questao[]
-  respostas         RespostaProva[]
-
-  provaOriginalId   Int?
-  provaOriginal     Prova?             @relation("ProvaOriginal", fields: [provaOriginalId], references: [id])
-  clones            Prova[]            @relation("ProvaOriginal")
+  @@index([clubeId])
+  @@index([unidadeId])
+  @@index([criadorId])
+  @@index([visibilidade])
 }
 
 enum VisibilidadeProva {
-  PRIVADA    // só criador + diretoria do clube
-  UNIDADE    // conselheiros/desbravadores da mesma unidade + diretoria do clube
-  CLUBE      // todos os membros do clube
-  PUBLICA    // qualquer clube pode visualizar e clonar (banco de provas)
+  PUBLICA           // Qualquer clube pode copiar (biblioteca global)
+  PRIVADA_CLUBE     // Apenas membros do clube
+  PRIVADA_UNIDADE   // Apenas membros da unidade específica
 }
 
 model Questao {
   id               Int           @id @default(autoincrement())
   provaId          Int
   tipo             TipoQuestao
-  enunciado        String
-  alternativas     Json?         // ex: { "A": "...", "B": "...", ... }
-  respostaCorreta  String?
-  valor            Int           @default(10)
-  geradaPorIA      Boolean       @default(false)
+  enunciado        String        @db.Text
+  opcoes           Json?         // { "a": "...", "b": "...", "c": "...", "d": "..." }
+  respostaCorreta  String?       // "a" | "b" | "c" | "d" ou critérios de avaliação
+  pontuacao        Int           @default(1)
+  ordem            Int           // Ordem da questão na prova
 
-  prova            Prova         @relation(fields: [provaId], references: [id])
+  criadoEm         DateTime      @default(now())
+  atualizadoEm     DateTime      @updatedAt
+
+  prova            Prova         @relation(fields: [provaId], references: [id], onDelete: Cascade)
+
+  @@index([provaId])
 }
 
 enum TipoQuestao {
   MULTIPLA_ESCOLHA
   DISSERTATIVA
+  PRATICA           // Requer upload de foto como evidência
 }
 
 model RespostaProva {
