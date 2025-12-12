@@ -75,4 +75,13 @@ export class CreateProvaDto {
       'urlReferenciaMDA deve ser apenas o slug (sem https://mda.wiki.br/)',
   })
   urlReferenciaMDA?: string;
+
+  @ApiProperty({
+    description: 'ID do clube (opcional - apenas para usuários MASTER que não são membros de um clube)',
+    example: 1,
+    required: false,
+  })
+  @IsInt({ message: 'clubeId deve ser um número inteiro' })
+  @IsOptional()
+  clubeId?: number;
 }

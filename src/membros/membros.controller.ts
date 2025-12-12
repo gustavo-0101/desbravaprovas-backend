@@ -33,7 +33,7 @@ export class MembrosController {
 
   @Post('solicitar-vinculo')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 solicitações por minuto
   @ApiOperation({
     summary: 'Solicitar vínculo a um clube (Rate limit: 3/min)',
@@ -71,7 +71,7 @@ export class MembrosController {
 
   @Post(':id/aprovar')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 aprovações por minuto
   @ApiOperation({
     summary: 'Aprovar membro pendente (Rate limit: 20/min)',
@@ -114,7 +114,7 @@ export class MembrosController {
 
   @Delete(':id/rejeitar')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 rejeições por minuto
   @ApiOperation({
     summary: 'Rejeitar solicitação de membro (Rate limit: 20/min)',
@@ -152,7 +152,7 @@ export class MembrosController {
 
   @Get('solicitacoes/:clubeId')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Listar solicitações pendentes de um clube',
     description:
@@ -228,7 +228,7 @@ export class MembrosController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Atualizar dados de um membro',
     description:
@@ -266,7 +266,7 @@ export class MembrosController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Remover membro',
     description:

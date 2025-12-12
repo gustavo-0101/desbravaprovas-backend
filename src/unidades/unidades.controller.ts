@@ -31,7 +31,7 @@ export class UnidadesController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Criar nova unidade' })
   @ApiResponse({ status: 201, description: 'Unidade criada com sucesso' })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
@@ -73,7 +73,7 @@ export class UnidadesController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Atualizar dados da unidade' })
   @ApiParam({ name: 'id', description: 'ID da unidade', type: Number })
   @ApiResponse({ status: 200, description: 'Unidade atualizada com sucesso' })
@@ -90,7 +90,7 @@ export class UnidadesController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Deletar unidade' })
   @ApiParam({ name: 'id', description: 'ID da unidade', type: Number })
   @ApiResponse({ status: 200, description: 'Unidade deletada com sucesso' })

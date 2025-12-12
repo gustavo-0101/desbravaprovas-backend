@@ -42,6 +42,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     return {
+      sub: usuario.id, // Usado pelo @GetUser('sub')
       id: usuario.id,
       email: usuario.email,
       nome: usuario.nome,

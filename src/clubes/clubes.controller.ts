@@ -33,7 +33,7 @@ export class ClubesController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 clubes por minuto
   @ApiOperation({ summary: 'Criar novo clube (Rate limit: 5/min)' })
   @ApiResponse({ status: 201, description: 'Clube criado com sucesso' })
@@ -73,7 +73,7 @@ export class ClubesController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 updates por minuto
   @ApiOperation({ summary: 'Atualizar dados do clube (Rate limit: 10/min)' })
   @ApiParam({ name: 'id', description: 'ID do clube', type: Number })
@@ -92,7 +92,7 @@ export class ClubesController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 deletes por minuto
   @ApiOperation({ summary: 'Deletar clube (apenas MASTER) (Rate limit: 3/min)' })
   @ApiParam({ name: 'id', description: 'ID do clube', type: Number })

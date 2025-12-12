@@ -20,7 +20,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "docs:generate": "compodoc -p tsconfig.json -d ./docs/code-docs",
     "docs:serve": "compodoc -p tsconfig.json -s -d ./docs/code-docs",
-    "docs:coverage": "compodoc -p tsconfig.json -d ./docs/code-docs --coverageTest 80"
+    "docs:coverage": "compodoc -p tsconfig.json -d ./docs/code-docs --coverageTest 80",
+    "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -133,10 +134,6 @@
     "testEnvironment": "node"
   },
   "prisma": {
-    "datasource": {
-      "db": {
-        "url": "env:DATABASE_URL"
-      }
-    }
+    "seed": "ts-node prisma/seed.ts"
   }
 }

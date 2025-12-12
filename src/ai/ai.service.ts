@@ -252,7 +252,7 @@ Retorne APENAS o JSON, sem texto adicional.`;
     const systemInstruction = 'Você é um especialista em criar provas educacionais para Desbravadores (movimento juvenil adventista). Suas questões devem ser claras, educativas e adequadas para jovens entre 10-16 anos.';
 
     const completion = await this.groq.chat.completions.create({
-      model: 'llama-3.1-70b-versatile',
+      model: 'llama-3.3-70b-versatile', // Atualizado: llama-3.1 foi descontinuado
       messages: [
         {
           role: 'system',

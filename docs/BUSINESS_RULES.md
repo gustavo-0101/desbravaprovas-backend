@@ -14,6 +14,13 @@
 - Acesso total a todos os clubes e provas
 - Pode aprovar/bloquear qualquer membro
 - Pode criar/editar/deletar qualquer entidade
+- **Pode criar provas sem ser membro de um clube** ⭐ (Sessão 07)
+  - Fornece `clubeId` explicitamente no body da requisição
+  - Ou usa clube onde é membro (se for membro)
+- **Pode copiar provas para qualquer clube** ⭐ (Sessão 07)
+  - Parâmetro `clubeIdDestino` via query
+- **Pode listar provas de qualquer clube** ⭐ (Sessão 07)
+  - Parâmetro `clubeId` via query
 
 ---
 
@@ -401,9 +408,16 @@
 
 ### Ao criar Prova
 
-- `clubeId` deve ser o clube do criador
+- **Usuários normais (não MASTER):**
+  - `clubeId` é automático (clube onde é membro)
+  - Precisa ser membro de um clube
+  - Precisa ser CONSELHEIRO, DIRETORIA, ADMIN_CLUBE ou INSTRUTOR
+- **MASTER:**
+  - Pode fornecer `clubeId` explicitamente (opcional)
+  - Se não fornecer `clubeId`: usa clube onde é membro
+  - Se não for membro de nenhum clube: precisa fornecer `clubeId`
+  - Não precisa ter papel de clube específico
 - Se `visibilidade = UNIDADE`: `unidadeId` é **obrigatório**
-- Criador deve ser CONSELHEIRO, DIRETORIA ou ADMIN_CLUBE
 
 ### Ao responder Prova
 
@@ -444,5 +458,5 @@
 
 ---
 
-**Última atualização**: 2025-12-10
-**Versão**: 1.2 - Sessão 04: Adicionado papel INSTRUTOR, regras de criação de clubes, cargos específicos e validações de idade/batismo
+**Última atualização**: 2025-12-11
+**Versão**: 1.3 - Sessão 07: MASTER pode criar/copiar/listar provas sem ser membro de clube

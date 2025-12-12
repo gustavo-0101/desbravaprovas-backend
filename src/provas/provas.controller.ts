@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { ProvasService } from './provas.service';
 import { CreateProvaDto } from './dto/create-prova.dto';
@@ -26,6 +27,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 
 @ApiTags('Provas')
@@ -39,7 +41,7 @@ export class ProvasController {
   @Post()
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Criar nova prova (Rate limit: 5/min)',
     description:
@@ -55,21 +57,23 @@ export class ProvasController {
   @Post(':id/copiar')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Copiar prova pública para meu clube (Rate limit: 10/min)',
     description:
-      'Copia uma prova pública da biblioteca global para o clube do usuário. Mantém a autoria original.',
+      'Copia uma prova pública da biblioteca global para o clube do usuário. Mantém a autoria original. MASTER pode fornecer clubeIdDestino.',
   })
   @ApiParam({ name: 'id', description: 'ID da prova a ser copiada' })
+  @ApiQuery({ name: 'clubeIdDestino', description: 'ID do clube destino (opcional - apenas MASTER)', required: false, type: Number })
   @ApiResponse({ status: 201, description: 'Prova copiada com sucesso' })
   @ApiResponse({ status: 403, description: 'Sem permissão ou prova não é pública' })
   @ApiResponse({ status: 404, description: 'Prova não encontrada' })
   copiarProva(
     @Param('id', ParseIntPipe) provaId: number,
     @GetUser('sub') usuarioId: number,
+    @Query('clubeIdDestino', new ParseIntPipe({ optional: true })) clubeIdDestino?: number,
   ) {
-    return this.provasService.copiarProva(usuarioId, provaId);
+    return this.provasService.copiarProva(usuarioId, provaId, clubeIdDestino);
   }
 
   @Get('biblioteca')
@@ -84,21 +88,25 @@ export class ProvasController {
 
   @Get('meu-clube')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Listar provas do meu clube',
     description:
-      'Lista provas do clube do usuário. DESBRAVADOR vê apenas provas permitidas (PUBLICA, PRIVADA_CLUBE, PRIVADA_UNIDADE da sua unidade). Outros papéis veem todas.',
+      'Lista provas do clube do usuário. DESBRAVADOR vê apenas provas permitidas (PUBLICA, PRIVADA_CLUBE, PRIVADA_UNIDADE da sua unidade). Outros papéis veem todas. MASTER pode fornecer clubeId.',
   })
+  @ApiQuery({ name: 'clubeId', description: 'ID do clube (opcional - apenas MASTER)', required: false, type: Number })
   @ApiResponse({ status: 200, description: 'Lista de provas do clube' })
   @ApiResponse({ status: 403, description: 'Não é membro de nenhum clube' })
-  listarProvasClube(@GetUser('sub') usuarioId: number) {
-    return this.provasService.listarProvasClube(usuarioId);
+  listarProvasClube(
+    @GetUser('sub') usuarioId: number,
+    @Query('clubeId', new ParseIntPipe({ optional: true })) clubeId?: number,
+  ) {
+    return this.provasService.listarProvasClube(usuarioId, clubeId);
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Buscar prova por ID',
     description: 'Retorna prova específica com todas as questões ordenadas.',
@@ -114,7 +122,7 @@ export class ProvasController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Atualizar prova (Rate limit: 10/min)',
     description:
@@ -135,7 +143,7 @@ export class ProvasController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 3, ttl: 60000 } })
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Remover prova (Rate limit: 3/min)',
     description:
@@ -152,7 +160,7 @@ export class ProvasController {
   @Post(':id/questoes')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 20, ttl: 60000 } })
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Adicionar questão à prova (Rate limit: 20/min)',
     description:
@@ -174,7 +182,7 @@ export class ProvasController {
   @Post(':id/gerar-questoes-ia')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 3, ttl: 60000 } })
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Gerar questões automaticamente por IA (Rate limit: 3/min)',
     description:
@@ -223,7 +231,7 @@ export class ProvasController {
   @Patch(':provaId/questoes/:questaoId')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 20, ttl: 60000 } })
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Atualizar questão (Rate limit: 20/min)',
     description:
@@ -245,7 +253,7 @@ export class ProvasController {
   @Delete(':provaId/questoes/:questaoId')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Remover questão (Rate limit: 10/min)',
     description:
@@ -266,7 +274,7 @@ export class ProvasController {
   @Patch(':id/questoes/reordenar')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Reordenar questões da prova (Rate limit: 10/min)',
     description:

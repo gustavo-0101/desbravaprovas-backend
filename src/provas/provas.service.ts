@@ -34,23 +34,61 @@ export class ProvasService {
       throw new NotFoundException('Usuário não encontrado');
     }
 
-    const membro = await this.prisma.membroClube.findFirst({
-      where: {
-        usuarioId,
-        status: StatusMembro.ATIVO,
-      },
-    });
+    const ehMaster = usuario.papelGlobal === PapelGlobal.MASTER;
+    let clubeId: number;
 
-    if (!membro) {
-      throw new ForbiddenException(
-        'Você precisa ser membro de um clube para criar provas',
-      );
-    }
+    // MASTER pode criar provas sem ser membro
+    if (ehMaster) {
+      if (dto.clubeId) {
+        // MASTER forneceu clubeId explicitamente
+        const clube = await this.prisma.clube.findUnique({
+          where: { id: dto.clubeId },
+        });
 
-    if (!this.podeGerenciarProvas(membro.papel)) {
-      throw new ForbiddenException(
-        'Apenas ADMIN_CLUBE, DIRETORIA, CONSELHEIRO ou INSTRUTOR podem criar provas',
-      );
+        if (!clube) {
+          throw new NotFoundException(`Clube com ID ${dto.clubeId} não encontrado`);
+        }
+
+        clubeId = dto.clubeId;
+      } else {
+        // MASTER não forneceu clubeId, tentar usar clube do membro
+        const membro = await this.prisma.membroClube.findFirst({
+          where: {
+            usuarioId,
+            status: StatusMembro.ATIVO,
+          },
+        });
+
+        if (membro) {
+          clubeId = membro.clubeId;
+        } else {
+          throw new BadRequestException(
+            'Como você não é membro de nenhum clube, forneça o clubeId no body da requisição',
+          );
+        }
+      }
+    } else {
+      // Usuário normal: precisa ser membro
+      const membro = await this.prisma.membroClube.findFirst({
+        where: {
+          usuarioId,
+          status: StatusMembro.ATIVO,
+        },
+      });
+
+      if (!membro) {
+        throw new ForbiddenException(
+          'Você precisa ser membro de um clube para criar provas',
+        );
+      }
+
+      if (!this.podeGerenciarProvas(membro.papel)) {
+        throw new ForbiddenException(
+          'Apenas ADMIN_CLUBE, DIRETORIA, CONSELHEIRO ou INSTRUTOR podem criar provas',
+        );
+      }
+
+      clubeId = membro.clubeId;
     }
 
     if (
@@ -67,8 +105,8 @@ export class ProvasService {
         where: { id: dto.unidadeId },
       });
 
-      if (!unidade || unidade.clubeId !== membro.clubeId) {
-        throw new BadRequestException('Unidade inválida ou não pertence ao seu clube');
+      if (!unidade || unidade.clubeId !== clubeId) {
+        throw new BadRequestException('Unidade inválida ou não pertence ao clube');
       }
     }
 
@@ -85,7 +123,7 @@ export class ProvasService {
         visibilidade: dto.visibilidade,
         unidadeId: dto.unidadeId,
         urlReferenciaMDA: dto.urlReferenciaMDA,
-        clubeId: membro.clubeId,
+        clubeId,
         criadorId: usuarioId,
       },
       include: {
@@ -111,7 +149,7 @@ export class ProvasService {
     return prova;
   }
 
-  async copiarProva(usuarioId: number, provaId: number) {
+  async copiarProva(usuarioId: number, provaId: number, clubeIdDestino?: number) {
     const usuario = await this.prisma.usuario.findUnique({
       where: { id: usuarioId },
     });
@@ -120,23 +158,61 @@ export class ProvasService {
       throw new NotFoundException('Usuário não encontrado');
     }
 
-    const membro = await this.prisma.membroClube.findFirst({
-      where: {
-        usuarioId,
-        status: StatusMembro.ATIVO,
-      },
-    });
+    const ehMaster = usuario.papelGlobal === PapelGlobal.MASTER;
+    let clubeId: number;
 
-    if (!membro) {
-      throw new ForbiddenException(
-        'Você precisa ser membro de um clube para copiar provas',
-      );
-    }
+    // MASTER pode copiar provas sem ser membro
+    if (ehMaster) {
+      if (clubeIdDestino) {
+        // MASTER forneceu clubeId explicitamente
+        const clube = await this.prisma.clube.findUnique({
+          where: { id: clubeIdDestino },
+        });
 
-    if (!this.podeGerenciarProvas(membro.papel)) {
-      throw new ForbiddenException(
-        'Apenas ADMIN_CLUBE, DIRETORIA, CONSELHEIRO ou INSTRUTOR podem copiar provas',
-      );
+        if (!clube) {
+          throw new NotFoundException(`Clube com ID ${clubeIdDestino} não encontrado`);
+        }
+
+        clubeId = clubeIdDestino;
+      } else {
+        // MASTER não forneceu clubeId, tentar usar clube do membro
+        const membro = await this.prisma.membroClube.findFirst({
+          where: {
+            usuarioId,
+            status: StatusMembro.ATIVO,
+          },
+        });
+
+        if (membro) {
+          clubeId = membro.clubeId;
+        } else {
+          throw new BadRequestException(
+            'Como você não é membro de nenhum clube, forneça o clubeId como parâmetro',
+          );
+        }
+      }
+    } else {
+      // Usuário normal: precisa ser membro
+      const membro = await this.prisma.membroClube.findFirst({
+        where: {
+          usuarioId,
+          status: StatusMembro.ATIVO,
+        },
+      });
+
+      if (!membro) {
+        throw new ForbiddenException(
+          'Você precisa ser membro de um clube para copiar provas',
+        );
+      }
+
+      if (!this.podeGerenciarProvas(membro.papel)) {
+        throw new ForbiddenException(
+          'Apenas ADMIN_CLUBE, DIRETORIA, CONSELHEIRO ou INSTRUTOR podem copiar provas',
+        );
+      }
+
+      clubeId = membro.clubeId;
     }
 
     const provaOriginal = await this.prisma.prova.findUnique({
@@ -168,7 +244,7 @@ export class ProvasService {
         categoria: provaOriginal.categoria,
         visibilidade: VisibilidadeProva.PRIVADA_CLUBE,
         urlReferenciaMDA: provaOriginal.urlReferenciaMDA,
-        clubeId: membro.clubeId,
+        clubeId,
         criadorId: usuarioId,
         autorOriginalId: provaOriginal.criadorId,
         provaOriginalId: provaOriginal.id,
@@ -247,7 +323,7 @@ export class ProvasService {
     return provas;
   }
 
-  async listarProvasClube(usuarioId: number) {
+  async listarProvasClube(usuarioId: number, clubeIdParam?: number) {
     const usuario = await this.prisma.usuario.findUnique({
       where: { id: usuarioId },
     });
@@ -256,30 +332,75 @@ export class ProvasService {
       throw new NotFoundException('Usuário não encontrado');
     }
 
-    const membro = await this.prisma.membroClube.findFirst({
-      where: {
-        usuarioId,
-        status: StatusMembro.ATIVO,
-      },
-    });
+    const ehMaster = usuario.papelGlobal === PapelGlobal.MASTER;
+    let clubeId: number;
+    let papel: PapelClube | null = null;
+    let unidadeId: number | null = null;
 
-    if (!membro) {
-      throw new ForbiddenException('Você não é membro de nenhum clube');
+    // MASTER pode listar provas de qualquer clube
+    if (ehMaster) {
+      if (clubeIdParam) {
+        // MASTER forneceu clubeId explicitamente
+        const clube = await this.prisma.clube.findUnique({
+          where: { id: clubeIdParam },
+        });
+
+        if (!clube) {
+          throw new NotFoundException(`Clube com ID ${clubeIdParam} não encontrado`);
+        }
+
+        clubeId = clubeIdParam;
+      } else {
+        // MASTER não forneceu clubeId, tentar usar clube do membro
+        const membro = await this.prisma.membroClube.findFirst({
+          where: {
+            usuarioId,
+            status: StatusMembro.ATIVO,
+          },
+        });
+
+        if (membro) {
+          clubeId = membro.clubeId;
+          papel = membro.papel;
+          unidadeId = membro.unidadeId;
+        } else {
+          throw new BadRequestException(
+            'Como você não é membro de nenhum clube, forneça o clubeId como parâmetro de query',
+          );
+        }
+      }
+    } else {
+      // Usuário normal: precisa ser membro
+      const membro = await this.prisma.membroClube.findFirst({
+        where: {
+          usuarioId,
+          status: StatusMembro.ATIVO,
+        },
+      });
+
+      if (!membro) {
+        throw new ForbiddenException('Você não é membro de nenhum clube');
+      }
+
+      clubeId = membro.clubeId;
+      papel = membro.papel;
+      unidadeId = membro.unidadeId;
     }
 
     let whereClause: any = {
-      clubeId: membro.clubeId,
+      clubeId,
     };
 
-    if (membro.papel === PapelClube.DESBRAVADOR) {
+    // Se for DESBRAVADOR, aplicar filtros de visibilidade
+    if (papel === PapelClube.DESBRAVADOR) {
       whereClause = {
-        clubeId: membro.clubeId,
+        clubeId,
         OR: [
           { visibilidade: VisibilidadeProva.PUBLICA },
           { visibilidade: VisibilidadeProva.PRIVADA_CLUBE },
           {
             visibilidade: VisibilidadeProva.PRIVADA_UNIDADE,
-            unidadeId: membro.unidadeId,
+            unidadeId,
           },
         ],
       };

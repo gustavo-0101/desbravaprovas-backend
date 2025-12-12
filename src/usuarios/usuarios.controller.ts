@@ -40,7 +40,7 @@ import { PapelGlobal } from '@prisma/client';
 @ApiTags('usuarios')
 @Controller('usuarios')
 @UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
