@@ -37,7 +37,6 @@ describe('Usuarios (e2e)', () => {
     await prisma.membroClube.deleteMany();
     await prisma.unidade.deleteMany();
     await prisma.clube.deleteMany();
-    await prisma.especialidade.deleteMany();
     await prisma.usuario.deleteMany();
 
     // Criar usuário MASTER para testes

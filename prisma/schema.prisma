@@ -48,11 +48,13 @@ model Usuario {
   provasAutoria     Prova[]          @relation("ProvasAutoria")
   respostas         RespostaProva[]
   clubeCriado       Clube?           @relation("ClubeCriado", fields: [clubeCriadoId], references: [id])
+  regionaisClubes   RegionalClube[]  @relation("RegionalClubes")
 }
 
 enum PapelGlobal {
   USUARIO   // padrão
   MASTER    // admin global da plataforma
+  REGIONAL  // supervisor regional - supervisiona múltiplos clubes
 }
 
 model Clube {
@@ -74,6 +76,7 @@ model Clube {
   unidades  Unidade[]
   provas    Prova[]
   criadoPor Usuario?       @relation("ClubeCriado")
+  regionais RegionalClube[] @relation("RegionaisClubes")
 }
 
 model Unidade {
@@ -122,6 +125,22 @@ enum StatusMembro {
   PENDENTE
   ATIVO
   BLOQUEADO
+}
+
+model RegionalClube {
+  id          Int      @id @default(autoincrement())
+  regionalId  Int      // Usuario com PapelGlobal.REGIONAL
+  clubeId     Int
+
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  regional    Usuario  @relation("RegionalClubes", fields: [regionalId], references: [id], onDelete: Cascade)
+  clube       Clube    @relation("RegionaisClubes", fields: [clubeId], references: [id], onDelete: Cascade)
+
+  @@unique([regionalId, clubeId])
+  @@index([regionalId])
+  @@index([clubeId])
 }
 
 enum CategoriaEspecialidade {

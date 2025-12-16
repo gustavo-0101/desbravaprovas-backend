@@ -14,6 +14,7 @@ import { UnidadesModule } from './unidades/unidades.module';
 import { MembrosModule } from './membros/membros.module';
 import { ProvasModule } from './provas/provas.module';
 import { AIModule } from './ai/ai.module';
+import { RegionaisModule } from './regionais/regionais.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { AIModule } from './ai/ai.module';
     MembrosModule,
     ProvasModule,
     AIModule,
+    RegionaisModule,
   ],
   controllers: [AppController],
   providers: [

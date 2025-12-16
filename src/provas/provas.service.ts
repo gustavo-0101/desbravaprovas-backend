@@ -517,14 +517,32 @@ export class ProvasService {
       },
     });
 
-    if (!membro && usuario.papelGlobal !== PapelGlobal.MASTER) {
+    // MASTER sempre tem acesso
+    const ehMaster = usuario.papelGlobal === PapelGlobal.MASTER;
+
+    // Verificar se é REGIONAL e supervisiona o clube
+    let ehRegionalDoClube = false;
+    if (usuario.papelGlobal === PapelGlobal.REGIONAL) {
+      const vinculo = await this.prisma.regionalClube.findUnique({
+        where: {
+          regionalId_clubeId: {
+            regionalId: usuarioId,
+            clubeId: prova.clubeId,
+          },
+        },
+      });
+      ehRegionalDoClube = !!vinculo;
+    }
+
+    if (!membro && !ehMaster && !ehRegionalDoClube) {
       throw new ForbiddenException('Você não tem permissão para visualizar esta prova');
     }
 
     if (
       membro &&
       !this.podeVerProva(membro, prova) &&
-      usuario.papelGlobal !== PapelGlobal.MASTER
+      !ehMaster &&
+      !ehRegionalDoClube
     ) {
       throw new ForbiddenException('Você não tem permissão para visualizar esta prova');
     }
@@ -561,9 +579,23 @@ export class ProvasService {
       },
     });
 
-    if (!ehMaster && !ehCriador && !ehAdminClube) {
+    // Verificar se é REGIONAL e supervisiona o clube
+    let ehRegionalDoClube = false;
+    if (usuario.papelGlobal === PapelGlobal.REGIONAL) {
+      const vinculo = await this.prisma.regionalClube.findUnique({
+        where: {
+          regionalId_clubeId: {
+            regionalId: usuarioId,
+            clubeId: prova.clubeId,
+          },
+        },
+      });
+      ehRegionalDoClube = !!vinculo;
+    }
+
+    if (!ehMaster && !ehCriador && !ehAdminClube && !ehRegionalDoClube) {
       throw new ForbiddenException(
-        'Apenas o criador, ADMIN_CLUBE ou MASTER podem atualizar esta prova',
+        'Apenas o criador, ADMIN_CLUBE, REGIONAL do clube ou MASTER podem atualizar esta prova',
       );
     }
 
@@ -654,9 +686,23 @@ export class ProvasService {
       },
     });
 
-    if (!ehMaster && !ehCriador && !ehAdminClube) {
+    // Verificar se é REGIONAL e supervisiona o clube
+    let ehRegionalDoClube = false;
+    if (usuario.papelGlobal === PapelGlobal.REGIONAL) {
+      const vinculo = await this.prisma.regionalClube.findUnique({
+        where: {
+          regionalId_clubeId: {
+            regionalId: usuarioId,
+            clubeId: prova.clubeId,
+          },
+        },
+      });
+      ehRegionalDoClube = !!vinculo;
+    }
+
+    if (!ehMaster && !ehCriador && !ehAdminClube && !ehRegionalDoClube) {
       throw new ForbiddenException(
-        'Apenas o criador, ADMIN_CLUBE ou MASTER podem remover esta prova',
+        'Apenas o criador, ADMIN_CLUBE, REGIONAL do clube ou MASTER podem remover esta prova',
       );
     }
 
@@ -707,9 +753,23 @@ export class ProvasService {
       },
     });
 
-    if (!ehMaster && !ehCriador && !ehAdminClube) {
+    // Verificar se é REGIONAL e supervisiona o clube
+    let ehRegionalDoClube = false;
+    if (usuario.papelGlobal === PapelGlobal.REGIONAL) {
+      const vinculo = await this.prisma.regionalClube.findUnique({
+        where: {
+          regionalId_clubeId: {
+            regionalId: usuarioId,
+            clubeId: prova.clubeId,
+          },
+        },
+      });
+      ehRegionalDoClube = !!vinculo;
+    }
+
+    if (!ehMaster && !ehCriador && !ehAdminClube && !ehRegionalDoClube) {
       throw new ForbiddenException(
-        'Apenas o criador, ADMIN_CLUBE ou MASTER podem adicionar questões',
+        'Apenas o criador, ADMIN_CLUBE, REGIONAL do clube ou MASTER podem adicionar questões',
       );
     }
 
@@ -771,9 +831,23 @@ export class ProvasService {
       },
     });
 
-    if (!ehMaster && !ehCriador && !ehAdminClube) {
+    // Verificar se é REGIONAL e supervisiona o clube
+    let ehRegionalDoClube = false;
+    if (usuario.papelGlobal === PapelGlobal.REGIONAL) {
+      const vinculo = await this.prisma.regionalClube.findUnique({
+        where: {
+          regionalId_clubeId: {
+            regionalId: usuarioId,
+            clubeId: questao.prova.clubeId,
+          },
+        },
+      });
+      ehRegionalDoClube = !!vinculo;
+    }
+
+    if (!ehMaster && !ehCriador && !ehAdminClube && !ehRegionalDoClube) {
       throw new ForbiddenException(
-        'Apenas o criador da prova, ADMIN_CLUBE ou MASTER podem atualizar questões',
+        'Apenas o criador da prova, ADMIN_CLUBE, REGIONAL do clube ou MASTER podem atualizar questões',
       );
     }
 
@@ -831,9 +905,23 @@ export class ProvasService {
       },
     });
 
-    if (!ehMaster && !ehCriador && !ehAdminClube) {
+    // Verificar se é REGIONAL e supervisiona o clube
+    let ehRegionalDoClube = false;
+    if (usuario.papelGlobal === PapelGlobal.REGIONAL) {
+      const vinculo = await this.prisma.regionalClube.findUnique({
+        where: {
+          regionalId_clubeId: {
+            regionalId: usuarioId,
+            clubeId: questao.prova.clubeId,
+          },
+        },
+      });
+      ehRegionalDoClube = !!vinculo;
+    }
+
+    if (!ehMaster && !ehCriador && !ehAdminClube && !ehRegionalDoClube) {
       throw new ForbiddenException(
-        'Apenas o criador da prova, ADMIN_CLUBE ou MASTER podem remover questões',
+        'Apenas o criador da prova, ADMIN_CLUBE, REGIONAL do clube ou MASTER podem remover questões',
       );
     }
 
@@ -887,9 +975,23 @@ export class ProvasService {
       },
     });
 
-    if (!ehMaster && !ehCriador && !ehAdminClube) {
+    // Verificar se é REGIONAL e supervisiona o clube
+    let ehRegionalDoClube = false;
+    if (usuario.papelGlobal === PapelGlobal.REGIONAL) {
+      const vinculo = await this.prisma.regionalClube.findUnique({
+        where: {
+          regionalId_clubeId: {
+            regionalId: usuarioId,
+            clubeId: prova.clubeId,
+          },
+        },
+      });
+      ehRegionalDoClube = !!vinculo;
+    }
+
+    if (!ehMaster && !ehCriador && !ehAdminClube && !ehRegionalDoClube) {
       throw new ForbiddenException(
-        'Apenas o criador, ADMIN_CLUBE ou MASTER podem reordenar questões',
+        'Apenas o criador, ADMIN_CLUBE, REGIONAL do clube ou MASTER podem reordenar questões',
       );
     }
 
