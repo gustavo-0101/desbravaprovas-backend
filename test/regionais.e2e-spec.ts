@@ -59,7 +59,6 @@ describe('Regionais (e2e)', () => {
   async function setupTestData() {
     const senhaHash = await bcrypt.hash('senha123', 10);
 
-    // Criar MASTER
     const master = await prisma.usuario.create({
       data: {
         nome: 'Master Test',
@@ -70,7 +69,6 @@ describe('Regionais (e2e)', () => {
     });
     masterId = master.id;
 
-    // Criar REGIONAL
     const regional = await prisma.usuario.create({
       data: {
         nome: 'Regional Test',
@@ -81,7 +79,6 @@ describe('Regionais (e2e)', () => {
     });
     regionalId = regional.id;
 
-    // Criar USUARIO comum
     await prisma.usuario.create({
       data: {
         nome: 'Usuario Test',
@@ -91,7 +88,6 @@ describe('Regionais (e2e)', () => {
       },
     });
 
-    // Criar clube
     const clube = await prisma.clube.create({
       data: {
         nome: 'Clube Regional Test',
@@ -103,7 +99,6 @@ describe('Regionais (e2e)', () => {
     });
     clubeId = clube.id;
 
-    // Obter tokens
     const masterLogin = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'master@regionais-test.com', senha: 'senha123' });
@@ -167,7 +162,6 @@ describe('Regionais (e2e)', () => {
     });
 
     it('deve retornar 409 se vínculo já existe', async () => {
-      // Garantir que vínculo existe
       await prisma.regionalClube.upsert({
         where: {
           regionalId_clubeId: {
@@ -216,7 +210,6 @@ describe('Regionais (e2e)', () => {
 
   describe('DELETE /regionais/:regionalId/clubes/:clubeId', () => {
     beforeEach(async () => {
-      // Garantir que vínculo existe para deletar
       await prisma.regionalClube.upsert({
         where: {
           regionalId_clubeId: {
@@ -250,7 +243,6 @@ describe('Regionais (e2e)', () => {
     });
 
     it('deve retornar 404 se vínculo não existir', async () => {
-      // Deletar vínculo primeiro
       await prisma.regionalClube.deleteMany({
         where: {
           regionalId,
@@ -267,7 +259,6 @@ describe('Regionais (e2e)', () => {
 
   describe('GET /regionais/:regionalId/clubes', () => {
     beforeEach(async () => {
-      // Garantir que vínculo existe
       await prisma.regionalClube.upsert({
         where: {
           regionalId_clubeId: {
@@ -305,7 +296,6 @@ describe('Regionais (e2e)', () => {
     });
 
     it('deve retornar lista vazia se regional não tiver clubes vinculados', async () => {
-      // Criar novo regional sem clubes
       const novoRegional = await prisma.usuario.create({
         data: {
           nome: 'Regional Vazio',
@@ -328,7 +318,6 @@ describe('Regionais (e2e)', () => {
 
   describe('GET /regionais/meus-clubes', () => {
     beforeEach(async () => {
-      // Garantir que vínculo existe
       await prisma.regionalClube.upsert({
         where: {
           regionalId_clubeId: {
@@ -370,12 +359,10 @@ describe('Regionais (e2e)', () => {
    */
   describe('Fluxo Completo: Gerenciar Supervisão Regional', () => {
     it('deve executar fluxo completo de supervisão', async () => {
-      // Limpar vínculos existentes
       await prisma.regionalClube.deleteMany({
         where: { regionalId, clubeId },
       });
 
-      // 1. Vincular clube ao regional
       const vincularRes = await request(app.getHttpServer())
         .post(`/regionais/${regionalId}/clubes`)
         .set('Authorization', `Bearer ${masterToken}`)
@@ -385,7 +372,6 @@ describe('Regionais (e2e)', () => {
       expect(vincularRes.body.regionalId).toBe(regionalId);
       expect(vincularRes.body.clubeId).toBe(clubeId);
 
-      // 2. Listar clubes do regional e verificar que está lá
       const listarRes = await request(app.getHttpServer())
         .get(`/regionais/${regionalId}/clubes`)
         .set('Authorization', `Bearer ${masterToken}`)
@@ -393,7 +379,6 @@ describe('Regionais (e2e)', () => {
 
       expect(listarRes.body.some((c: any) => c.id === clubeId)).toBe(true);
 
-      // 3. REGIONAL lista seus próprios clubes
       const meusClubesRes = await request(app.getHttpServer())
         .get('/regionais/meus-clubes')
         .set('Authorization', `Bearer ${regionalToken}`)
@@ -401,13 +386,11 @@ describe('Regionais (e2e)', () => {
 
       expect(meusClubesRes.body.some((c: any) => c.id === clubeId)).toBe(true);
 
-      // 4. Desvincular clube do regional
       await request(app.getHttpServer())
         .delete(`/regionais/${regionalId}/clubes/${clubeId}`)
         .set('Authorization', `Bearer ${masterToken}`)
         .expect(200);
 
-      // 5. Verificar que foi desvinculado
       const listarAposRes = await request(app.getHttpServer())
         .get(`/regionais/${regionalId}/clubes`)
         .set('Authorization', `Bearer ${masterToken}`)

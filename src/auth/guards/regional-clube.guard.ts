@@ -33,12 +33,10 @@ export class RegionalClubeGuard implements CanActivate {
       throw new ForbiddenException('Usuário não autenticado');
     }
 
-    // MASTER tem acesso total (bypass)
     if (user.papelGlobal === PapelGlobal.MASTER) {
       return true;
     }
 
-    // Extrair clubeId do request (params ou query)
     const clubeId = this.extractClubeId(request);
 
     if (!clubeId) {
@@ -47,7 +45,6 @@ export class RegionalClubeGuard implements CanActivate {
       );
     }
 
-    // Verificar se é membro do clube (bypass para membros)
     const membro = await this.prisma.membroClube.findFirst({
       where: {
         usuarioId: user.id,
@@ -56,10 +53,9 @@ export class RegionalClubeGuard implements CanActivate {
     });
 
     if (membro) {
-      return true; // Membros do clube sempre têm acesso
+      return true;
     }
 
-    // Se não é membro, verificar se é REGIONAL e supervisiona o clube
     if (user.papelGlobal === PapelGlobal.REGIONAL) {
       const vinculo = await this.prisma.regionalClube.findUnique({
         where: {
@@ -71,7 +67,7 @@ export class RegionalClubeGuard implements CanActivate {
       });
 
       if (vinculo) {
-        return true; // REGIONAL supervisiona este clube
+        return true;
       }
 
       throw new ForbiddenException(
@@ -79,7 +75,6 @@ export class RegionalClubeGuard implements CanActivate {
       );
     }
 
-    // Não é MASTER, não é membro, não é REGIONAL
     throw new ForbiddenException(
       'Você não tem permissão para acessar recursos deste clube',
     );
@@ -89,22 +84,18 @@ export class RegionalClubeGuard implements CanActivate {
    * Extrai clubeId dos parâmetros da requisição (params, query ou body)
    */
   private extractClubeId(request: any): number | null {
-    // Tentar pegar de params primeiro
     if (request.params?.clubeId) {
       return Number(request.params.clubeId);
     }
 
-    // Tentar pegar de query
     if (request.query?.clubeId) {
       return Number(request.query.clubeId);
     }
 
-    // Tentar pegar do body
     if (request.body?.clubeId) {
       return Number(request.body.clubeId);
     }
 
-    // Tentar pegar de params.id se o contexto for um clube
     if (request.params?.id && request.route?.path?.includes('clubes')) {
       return Number(request.params.id);
     }
