@@ -84,22 +84,22 @@ export class RegionalClubeGuard implements CanActivate {
    * Extrai clubeId dos parâmetros da requisição (params, query ou body)
    */
   private extractClubeId(request: any): number | null {
+    let clubeId: number | null = null;
+
     if (request.params?.clubeId) {
-      return Number(request.params.clubeId);
+      clubeId = Number(request.params.clubeId);
+    } else if (request.query?.clubeId) {
+      clubeId = Number(request.query.clubeId);
+    } else if (request.body?.clubeId) {
+      clubeId = Number(request.body.clubeId);
+    } else if (request.params?.id && request.route?.path?.includes('clubes')) {
+      clubeId = Number(request.params.id);
     }
 
-    if (request.query?.clubeId) {
-      return Number(request.query.clubeId);
+    if (clubeId !== null && isNaN(clubeId)) {
+      throw new BadRequestException('clubeId inválido: deve ser um número válido');
     }
 
-    if (request.body?.clubeId) {
-      return Number(request.body.clubeId);
-    }
-
-    if (request.params?.id && request.route?.path?.includes('clubes')) {
-      return Number(request.params.id);
-    }
-
-    return null;
+    return clubeId;
   }
 }

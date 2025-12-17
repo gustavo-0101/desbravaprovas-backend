@@ -5,13 +5,17 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogService } from '../common/services/audit-log.service';
 import { PapelGlobal } from '@prisma/client';
 
 @Injectable()
 export class RegionaisService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private auditLog: AuditLogService,
+  ) {}
 
-  async vincularClube(regionalId: number, clubeId: number) {
+  async vincularClube(regionalId: number, clubeId: number, executorId?: number) {
     const regional = await this.prisma.usuario.findUnique({
       where: { id: regionalId },
     });
@@ -36,52 +40,74 @@ export class RegionaisService {
       throw new NotFoundException(`Clube com ID ${clubeId} não encontrado`);
     }
 
-    const vinculoExistente = await this.prisma.regionalClube.findUnique({
-      where: {
-        regionalId_clubeId: {
+    try {
+      const vinculo = await this.prisma.regionalClube.create({
+        data: {
           regionalId,
           clubeId,
         },
-      },
-    });
+        include: {
+          clube: {
+            select: {
+              id: true,
+              nome: true,
+              cidade: true,
+              estado: true,
+            },
+          },
+          regional: {
+            select: {
+              id: true,
+              nome: true,
+              email: true,
+            },
+          },
+        },
+      });
 
-    if (vinculoExistente) {
-      throw new ConflictException(
-        'Este regional já supervisiona este clube',
-      );
+      this.auditLog.log({
+        timestamp: new Date(),
+        userId: executorId || regionalId,
+        action: 'VINCULAR_CLUBE_REGIONAL',
+        entity: 'RegionalClube',
+        entityId: vinculo.id,
+        details: {
+          regionalId,
+          regionalNome: regional.nome,
+          clubeId,
+          clubeNome: clube.nome,
+        },
+      });
+
+      return vinculo;
+    } catch (error) {
+      if (error.code === 'P2002') {
+        throw new ConflictException(
+          'Este regional já supervisiona este clube',
+        );
+      }
+      throw error;
     }
-
-    return this.prisma.regionalClube.create({
-      data: {
-        regionalId,
-        clubeId,
-      },
-      include: {
-        clube: {
-          select: {
-            id: true,
-            nome: true,
-            cidade: true,
-            estado: true,
-          },
-        },
-        regional: {
-          select: {
-            id: true,
-            nome: true,
-            email: true,
-          },
-        },
-      },
-    });
   }
 
-  async desvincularClube(regionalId: number, clubeId: number) {
+  async desvincularClube(regionalId: number, clubeId: number, executorId?: number) {
     const vinculo = await this.prisma.regionalClube.findUnique({
       where: {
         regionalId_clubeId: {
           regionalId,
           clubeId,
+        },
+      },
+      include: {
+        regional: {
+          select: {
+            nome: true,
+          },
+        },
+        clube: {
+          select: {
+            nome: true,
+          },
         },
       },
     });
@@ -98,6 +124,20 @@ export class RegionaisService {
           regionalId,
           clubeId,
         },
+      },
+    });
+
+    this.auditLog.log({
+      timestamp: new Date(),
+      userId: executorId || regionalId,
+      action: 'DESVINCULAR_CLUBE_REGIONAL',
+      entity: 'RegionalClube',
+      entityId: vinculo.id,
+      details: {
+        regionalId,
+        regionalNome: vinculo.regional.nome,
+        clubeId,
+        clubeNome: vinculo.clube.nome,
       },
     });
 

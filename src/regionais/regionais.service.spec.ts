@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RegionaisService } from './regionais.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogService } from '../common/services/audit-log.service';
 import {
   NotFoundException,
   ForbiddenException,
@@ -17,6 +18,7 @@ class PrismaServiceEx extends PrismaService {
 describe('RegionaisService', () => {
   let service: RegionaisService;
   let prisma: PrismaServiceEx;
+  let auditLog: AuditLogService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -38,11 +40,18 @@ describe('RegionaisService', () => {
             },
           },
         },
+        {
+          provide: AuditLogService,
+          useValue: {
+            log: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<RegionaisService>(RegionaisService);
     prisma = module.get<PrismaServiceEx>(PrismaService);
+    auditLog = module.get<AuditLogService>(AuditLogService);
   });
 
   it('should be defined', () => {
@@ -81,7 +90,6 @@ describe('RegionaisService', () => {
 
       jest.spyOn(prisma.usuario, 'findUnique').mockResolvedValue(mockRegional as any);
       jest.spyOn(prisma.clube, 'findUnique').mockResolvedValue(mockClube as any);
-      jest.spyOn(prisma.regionalClube, 'findUnique').mockResolvedValue(null);
       jest.spyOn(prisma.regionalClube, 'create').mockResolvedValue(mockVinculo as any);
 
       // Act
@@ -159,15 +167,12 @@ describe('RegionaisService', () => {
         nome: 'Clube Test',
       };
 
-      const vinculoExistente = {
-        id: 1,
-        regionalId: 1,
-        clubeId: 2,
-      };
+      const prismaError = new Error('Unique constraint failed') as any;
+      prismaError.code = 'P2002';
 
       jest.spyOn(prisma.usuario, 'findUnique').mockResolvedValue(mockRegional as any);
       jest.spyOn(prisma.clube, 'findUnique').mockResolvedValue(mockClube as any);
-      jest.spyOn(prisma.regionalClube, 'findUnique').mockResolvedValue(vinculoExistente as any);
+      jest.spyOn(prisma.regionalClube, 'create').mockRejectedValue(prismaError);
 
       await expect(service.vincularClube(1, 2)).rejects.toThrow(
         ConflictException,
@@ -184,6 +189,12 @@ describe('RegionaisService', () => {
         id: 1,
         regionalId: 1,
         clubeId: 2,
+        regional: {
+          nome: 'Regional Test',
+        },
+        clube: {
+          nome: 'Clube Test',
+        },
       };
 
       jest.spyOn(prisma.regionalClube, 'findUnique').mockResolvedValue(vinculo as any);

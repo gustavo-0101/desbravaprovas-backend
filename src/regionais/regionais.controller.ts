@@ -48,8 +48,9 @@ export class RegionaisController {
   vincularClube(
     @Param('regionalId', ParseIntPipe) regionalId: number,
     @Body() vincularClubeDto: VincularClubeDto,
+    @CurrentUser() user: CurrentUserType,
   ) {
-    return this.regionaisService.vincularClube(regionalId, vincularClubeDto.clubeId);
+    return this.regionaisService.vincularClube(regionalId, vincularClubeDto.clubeId, user.id);
   }
 
   @Delete(':regionalId/clubes/:clubeId')
@@ -69,8 +70,9 @@ export class RegionaisController {
   desvincularClube(
     @Param('regionalId', ParseIntPipe) regionalId: number,
     @Param('clubeId', ParseIntPipe) clubeId: number,
+    @CurrentUser() user: CurrentUserType,
   ) {
-    return this.regionaisService.desvincularClube(regionalId, clubeId);
+    return this.regionaisService.desvincularClube(regionalId, clubeId, user.id);
   }
 
   @Get(':regionalId/clubes')
